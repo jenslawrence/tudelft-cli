@@ -8,8 +8,10 @@ from pydantic import BaseModel
 
 class AuthSession(BaseModel):
     access_token: Optional[str] = None
-    refresh_token: Optional[str] = None
+    token_type: Optional[str] = None
+    scope: Optional[str] = None
     expires_at: Optional[datetime] = None
+    obtained_at: Optional[datetime] = None
     student_number: Optional[str] = None
     netid: Optional[str] = None
 

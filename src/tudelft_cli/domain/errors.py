@@ -16,3 +16,6 @@ class PortalChangedError(TUDelftCliError):
 
 class ValidationError(TUDelftCliError):
     pass
+
+class LoginTimeoutError(TUDelftCliError):
+    pass
