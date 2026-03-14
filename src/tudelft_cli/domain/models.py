@@ -31,3 +31,18 @@ class Grade(BaseModel):
     value: str
     passed: Optional[bool] = None
     published_at: Optional[datetime] = None
+
+class EcPhaseProgress(BaseModel):
+    programme_name: str
+    faculty: Optional[str] = None
+    exam_programme_name: Optional[str] = None
+    phase_description: str
+    earned_ec: Optional[int] = None
+    required_ec: Optional[int] = None
+    percentage: Optional[int] = None
+    completed: Optional[bool] = None
+    other_earned_ec: Optional[int] = None
+
+
+class EcProgress(BaseModel):
+    items: list[EcPhaseProgress]

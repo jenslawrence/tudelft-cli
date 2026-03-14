@@ -7,7 +7,7 @@ import httpx
 
 from tudelft_cli.domain.errors import AuthenticationError, PortalChangedError
 from tudelft_cli.domain.interfaces import StudentPortal
-from tudelft_cli.domain.models import AuthSession, Grade, StudentProfile
+from tudelft_cli.domain.models import AuthSession, EcPhaseProgress, EcProgress, Grade, StudentProfile
 
 
 class MyTUDelftPortal(StudentPortal):
@@ -144,6 +144,82 @@ class MyTUDelftPortal(StudentPortal):
             published_at=published_at,
         )
 
+    def get_ec_progress(self, session: AuthSession) -> EcProgress:
+        url = f"{self.BASE_URL}/student/voortgang/per_opleiding/"
+
+        try:
+            response = httpx.get(url, headers=self._build_headers(session), timeout=30.0)
+        except httpx.HTTPError as exc:
+            raise AuthenticationError(f"Request to TU Delft portal failed: {exc}") from exc
+
+        if response.status_code == 401:
+            raise AuthenticationError("Stored session is no longer valid. Run 'tudelft login' again.")
+
+        if response.status_code != 200:
+            raise PortalChangedError(
+                f"Unexpected response from voortgang endpoint: {response.status_code}"
+            )
+
+        try:
+            payload = response.json()
+        except ValueError as exc:
+            raise PortalChangedError("Voortgang endpoint did not return valid JSON.") from exc
+
+        if not isinstance(payload, dict):
+            raise PortalChangedError("Voortgang endpoint returned an unexpected payload shape.")
+
+        items = payload.get("items")
+        if not isinstance(items, list):
+            raise PortalChangedError("Voortgang payload is missing expected items field.")
+
+        progress_items: list[EcPhaseProgress] = []
+
+        for programme in items:
+            if not isinstance(programme, dict):
+                continue
+
+            programme_name = self._required_string(programme, "opleiding_naam")
+            exam_phases = programme.get("examenfases")
+
+            if not isinstance(exam_phases, list):
+                continue
+
+            for phase in exam_phases:
+                if not isinstance(phase, dict):
+                    continue
+
+                minimum_punten = self._parse_int(phase.get("minimum_punten"))
+                punten_behaald = self._parse_int(phase.get("punten_behaald"))
+                percentage_behaald = self._parse_int(phase.get("percentage_behaald"))
+                overige_behaalde_punten = self._parse_int(phase.get("overige_behaalde_punten"))
+
+                voldaan = phase.get("voldaan")
+                completed: bool | None
+                if voldaan == "J":
+                    completed = True
+                elif voldaan == "N":
+                    completed = False
+                else:
+                    completed = None
+
+                progress_items.append(
+                    EcPhaseProgress(
+                        programme_name=programme_name,
+                        faculty=self._as_optional_string(phase.get("faculteit")),
+                        exam_programme_name=self._as_optional_string(
+                            phase.get("examenprogramma_naam")
+                        ),
+                        phase_description=self._required_string(phase, "examenfase_omschrijving"),
+                        earned_ec=punten_behaald,
+                        required_ec=minimum_punten,
+                        percentage=percentage_behaald,
+                        completed=completed,
+                        other_earned_ec=overige_behaalde_punten,
+                    )
+                )
+
+        return EcProgress(items=progress_items)
+
     @staticmethod
     def _required_string(item: dict[str, Any], key: str) -> str:
         value = item.get(key)
@@ -164,5 +240,14 @@ class MyTUDelftPortal(StudentPortal):
 
         try:
             return datetime.fromisoformat(value.replace("Z", "+00:00"))
+        except ValueError:
+            return None
+
+    @staticmethod
+    def _parse_int(value: object) -> int | None:
+        if value is None or value == "":
+            return None
+        try:
+            return int(str(value))
         except ValueError:
             return None

@@ -1,4 +1,5 @@
 from tudelft_cli.cli.auth import app as auth_app
+from tudelft_cli.cli.ec import app as ec_app
 from tudelft_cli.cli.grades import app as grades_app
 from tudelft_cli.cli.root import app
 
@@ -25,6 +26,7 @@ def whoami() -> None:
 
 app.add_typer(auth_app)
 app.add_typer(grades_app)
+app.add_typer(ec_app)
 
 
 def main() -> None:
