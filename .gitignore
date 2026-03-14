@@ -1,0 +1,16 @@
+__pycache__/
+*.pyc
+.venv/
+.env
+.coverage
+.pytest_cache/
+dist/
+build/
+*.egg-info/
+
+# local session/token files
+.config/
+session.json
+
+# playwright browser artifacts
+playwright-report/
