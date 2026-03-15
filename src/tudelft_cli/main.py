@@ -2,6 +2,7 @@ import sys
 import typer
 
 from tudelft_cli.cli.auth import app as auth_app
+from tudelft_cli.cli.whoami import app as whoami_app
 from tudelft_cli.cli.course import app as course_app
 from tudelft_cli.cli.enroll_exam import app as enroll_exam_app
 from tudelft_cli.cli.enroll_courses import app as enroll_courses_app
@@ -32,6 +33,7 @@ def main_callback() -> None:
 
 
 app.add_typer(auth_app, help="Authentication commands.")
+app.add_typer(whoami_app, help="Student profile commands.")
 app.add_typer(grades_app, help="Grade and progress commands.")
 app.add_typer(ec_app, help="EC and progress commands.")
 app.add_typer(enrollments_app, help="Enrollment overview commands.")
