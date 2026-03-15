@@ -16,7 +16,7 @@ class OutputFormat(str, Enum):
     json = "json"
 
 
-@app.command("course")
+@app.command("course", help="Show or open the TU Delft Study Guide page for a course.")
 def course(
     course_code: str = typer.Argument(..., help="Course code, e.g. CSE2530"),
     open_: bool = typer.Option(False, "--open", help="Open the Study Guide page in browser."),

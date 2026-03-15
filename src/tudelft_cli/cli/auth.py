@@ -8,7 +8,7 @@ from tudelft_cli.infra.auth.session_store import SessionStore
 app = typer.Typer(help="Authentication commands")
 
 
-@app.command("login")
+@app.command("login", help="Authenticate with TU Delft via browser login.")
 def login() -> None:
     try:
         auth_provider = BrowserAuthProvider(SessionStore())
@@ -20,7 +20,7 @@ def login() -> None:
         raise typer.Exit(code=1)
 
 
-@app.command("logout")
+@app.command("logout", help="Remove the stored TU Delft session.")
 def logout() -> None:
     auth_provider = BrowserAuthProvider(SessionStore())
     auth_provider.logout()

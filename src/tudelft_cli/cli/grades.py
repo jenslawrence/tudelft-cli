@@ -26,7 +26,7 @@ FINAL_COMPONENT_NAMES = {
 }
 
 
-@app.command("grades")
+@app.command("grades", help="Show recorded grades from MyTU Delft.")
 def grades(
     output: OutputFormat = typer.Option(OutputFormat.table, "--output", "-o"),
     final_only: bool = typer.Option(False, "--final-only", help="Show only final results."),

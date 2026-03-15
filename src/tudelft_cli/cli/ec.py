@@ -19,7 +19,7 @@ class OutputFormat(str, Enum):
     json = "json"
 
 
-@app.command("ec")
+@app.command("ec", help="Show EC progress per programme and phase.")
 def ec(
     output: OutputFormat = typer.Option(OutputFormat.table, "--output", "-o"),
 ) -> None:

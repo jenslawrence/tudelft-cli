@@ -7,10 +7,10 @@ from tudelft_cli.infra.auth.browser_auth import BrowserAuthProvider
 from tudelft_cli.infra.auth.session_store import SessionStore
 from tudelft_cli.infra.portal.mytudelft_portal import MyTUDelftPortal
 
-app = typer.Typer()
+app = typer.Typer(help="Enrollment overview commands")
 
 
-@app.command("enrollments")
+@app.command("enrollments", help="Show current course and exam enrollments.")
 def enrollments(
     courses: bool = typer.Option(False, "--courses"),
     exams: bool = typer.Option(False, "--exams"),

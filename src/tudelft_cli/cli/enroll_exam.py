@@ -85,7 +85,7 @@ def _select_exam_opportunity(course, opportunities: list) -> int:
 
     return int(selected)
 
-@app.command("enroll-exam")
+@app.command("enroll-exam", help="Enroll in an exam opportunity for a course.")
 def enroll_exam(
     course_code: str = typer.Argument(..., help="Course code to enroll exam(s) for."),
     select: int | None = typer.Option(

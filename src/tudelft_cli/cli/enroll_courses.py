@@ -12,7 +12,7 @@ from tudelft_cli.infra.portal.mytudelft_portal import MyTUDelftPortal
 app = typer.Typer(help="Course enrollment commands")
 
 
-@app.command("enroll-course")
+@app.command("enroll-course", help="Enroll in a course from the suggested course list.")
 def enroll_course(
     course_codes: list[str] = typer.Argument(..., help="One or more course codes to enroll in."),
     yes: bool = typer.Option(False, "--yes", help="Skip confirmation prompt."),

@@ -20,7 +20,7 @@ class OutputFormat(str, Enum):
     json = "json"
 
 
-@app.command("suggest-exams")
+@app.command("suggest-exams", help="Show courses with exam opportunities open for enrollment.")
 def suggest_exams(
     output: OutputFormat = typer.Option(OutputFormat.table, "--output", "-o"),
 ) -> None:
