@@ -85,3 +85,25 @@ class CourseEnrollment(BaseModel):
     can_unenroll: Optional[bool] = None
     is_new: Optional[bool] = None
     is_historical: Optional[bool] = None
+
+class ExamEnrollment(BaseModel):
+    exam_offering_id: int
+    course_id: int
+    course_code: str
+    academic_year: Optional[int] = None
+    course_name: str
+    programme_part: Optional[str] = None
+    test_code: Optional[str] = None
+    test_description: Optional[str] = None
+    block: Optional[str] = None
+    period_description: Optional[str] = None
+    opportunity: Optional[int] = None
+    exam_datetime: Optional[datetime] = None
+    day: Optional[str] = None
+    start_time: Optional[str] = None
+    end_time: Optional[str] = None
+    can_unenroll: Optional[bool] = None
+    is_new: Optional[bool] = None
+    result: Optional[str] = None
+    is_historical: Optional[bool] = None
+

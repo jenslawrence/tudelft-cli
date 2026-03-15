@@ -6,6 +6,7 @@ from typing import Sequence
 from tudelft_cli.domain.models import (
     AuthSession,
     CourseEnrollment,
+    ExamEnrollment,
     EcProgress,
     Grade,
     StudentProfile,
@@ -45,6 +46,10 @@ class StudentPortal(ABC):
 
     @abstractmethod
     def get_course_enrollments(self, session: AuthSession) -> list[CourseEnrollment]:
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_exam_enrollments(self, session: AuthSession) -> list[ExamEnrollment]:
         raise NotImplementedError
 
     @abstractmethod

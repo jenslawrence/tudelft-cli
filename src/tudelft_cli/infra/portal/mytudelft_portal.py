@@ -10,6 +10,7 @@ from tudelft_cli.domain.interfaces import StudentPortal
 from tudelft_cli.domain.models import (
     AuthSession,
     CourseEnrollment,
+    ExamEnrollment,
     EcPhaseProgress,
     EcProgress,
     Grade,
@@ -24,6 +25,7 @@ class MyTUDelftPortal(StudentPortal):
     f"{BASE_URL}/student/cursussen_voor_cursusinschrijving/te_volgen_onderwijs/open_voor_inschrijving/"
 )
     COURSE_ENROLLMENTS_URL = f"{BASE_URL}/student/inschrijvingen/cursussen"
+    EXAM_ENROLLMENTS_URL = f"{BASE_URL}/student/inschrijvingen/toetsen"
 
     def _build_headers(self, session: AuthSession) -> dict[str, str]:
         if not session.access_token:
@@ -302,6 +304,41 @@ class MyTUDelftPortal(StudentPortal):
 
         return enrollments
 
+    def get_exam_enrollments(self, session: AuthSession) -> list[ExamEnrollment]:
+        try:
+            response = httpx.get(
+                self.EXAM_ENROLLMENTS_URL,
+                headers=self._build_headers(session),
+                timeout=30.0,
+            )
+        except httpx.HTTPError as exc:
+            raise AuthenticationError(f"Request to TU Delft portal failed: {exc}") from exc
+
+        if response.status_code == 401:
+            raise AuthenticationError("Stored session is no longer valid. Run 'tudelft login' again.")
+
+        if response.status_code != 200:
+            raise PortalChangedError(
+                f"Unexpected response from exam enrollments endpoint: {response.status_code}"
+            )
+
+        try:
+            payload = response.json()
+        except ValueError as exc:
+            raise PortalChangedError("Exam enrollments endpoint did not return valid JSON.") from exc
+
+        items = payload.get("items")
+        if not isinstance(items, list):
+            raise PortalChangedError("Exam enrollments payload is missing expected items.")
+
+        exams: list[ExamEnrollment] = []
+        for item in items:
+            if not isinstance(item, dict):
+                continue
+            exams.append(self._map_exam_enrollment(item))
+
+        return exams
+
     def enroll_courses(self, session: AuthSession, course_codes: list[str]) -> list[CourseEnrollment]:
         suggestions = self.get_suggested_courses(session)
         by_code = {course.course_code.upper(): course for course in suggestions}
@@ -394,6 +431,29 @@ class MyTUDelftPortal(StudentPortal):
             programme_part=self._as_optional_string(item.get("onderdeel_van")),
             can_unenroll=self._parse_bool_jn(item.get("mag_uitschrijven")),
             is_new=self._parse_bool_jn(item.get("nieuw")),
+            is_historical=self._parse_bool_jn(item.get("historie")),
+        )
+
+    def _map_exam_enrollment(self, item: dict[str, Any]) -> ExamEnrollment:
+        return ExamEnrollment(
+            exam_offering_id=int(item["id_toets_gelegenheid"]),
+            course_id=int(item["id_cursus"]),
+            course_code=self._required_string(item, "cursus"),
+            academic_year=self._parse_int(item.get("collegejaar")),
+            course_name=self._required_string(item, "cursus_korte_naam"),
+            programme_part=self._as_optional_string(item.get("onderdeel_van")),
+            test_code=self._as_optional_string(item.get("toets")),
+            test_description=self._as_optional_string(item.get("toets_omschrijving")),
+            block=self._as_optional_string(item.get("blok")),
+            period_description=self._as_optional_string(item.get("periode_omschrijving")),
+            opportunity=self._parse_int(item.get("gelegenheid")),
+            exam_datetime=self._parse_datetime(item.get("toetsdatum")),
+            day=self._as_optional_string(item.get("dag")),
+            start_time=self._format_time_decimal(item.get("tijd_vanaf")),
+            end_time=self._format_time_decimal(item.get("tijd_tm")),
+            can_unenroll=self._parse_bool_jn(item.get("mag_uitschrijven")),
+            is_new=self._parse_bool_jn(item.get("nieuw")),
+            result=self._as_optional_string(item.get("resultaat")),
             is_historical=self._parse_bool_jn(item.get("historie")),
         )
 
@@ -491,3 +551,17 @@ class MyTUDelftPortal(StudentPortal):
             return int(str(value))
         except ValueError:
             return None
+
+    @staticmethod
+    def _format_time_decimal(value: object) -> str | None:
+        if value is None or value == "":
+            return None
+
+        try:
+            number = float(value)
+        except (TypeError, ValueError):
+            return str(value)
+
+        hours = int(number)
+        minutes = int(round((number - hours) * 60))
+        return f"{hours:02d}:{minutes:02d}"
