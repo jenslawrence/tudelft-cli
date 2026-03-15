@@ -4,6 +4,7 @@ import typer
 from tudelft_cli.cli.auth import app as auth_app
 from tudelft_cli.cli.course import app as course_app
 from tudelft_cli.cli.enroll_exam import app as enroll_exam_app
+from tudelft_cli.cli.enroll_courses import app as enroll_courses_app
 from tudelft_cli.cli.enrollments import app as enrollments_app
 from tudelft_cli.cli.grades import app as grades_app
 from tudelft_cli.cli.root import app as root_app
@@ -35,6 +36,7 @@ app.add_typer(enrollments_app, help="Enrollment overview commands.")
 app.add_typer(suggest_courses_app, help="Suggested course enrollment commands.")
 app.add_typer(suggest_exams_app, help="Suggested exam enrollment commands.")
 app.add_typer(enroll_exam_app, help="Exam enrollment commands.")
+app.add_typer(enroll_courses_app, help="Course enrollment commands.")
 app.add_typer(course_app, help="Study Guide course commands.")
 app.add_typer(root_app, help="General student profile commands.")
 
