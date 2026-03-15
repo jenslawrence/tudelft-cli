@@ -19,3 +19,6 @@ class ValidationError(TUDelftCliError):
 
 class LoginTimeoutError(TUDelftCliError):
     pass
+
+class MissingBrowserError(TUDelftCliError):
+    pass

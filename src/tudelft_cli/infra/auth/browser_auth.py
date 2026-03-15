@@ -6,7 +6,7 @@ from typing import Any
 from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 from playwright.sync_api import sync_playwright
 
-from tudelft_cli.domain.errors import AuthenticationError, LoginTimeoutError
+from tudelft_cli.domain.errors import AuthenticationError, LoginTimeoutError, MissingBrowserError
 from tudelft_cli.domain.interfaces import AuthProvider
 from tudelft_cli.domain.models import AuthSession
 from tudelft_cli.infra.auth.session_store import SessionStore
@@ -23,7 +23,20 @@ class BrowserAuthProvider(AuthProvider):
         token_payload: dict[str, Any] | None = None
 
         with sync_playwright() as playwright:
-            browser = playwright.chromium.launch(headless=False)
+            try:
+                browser = playwright.chromium.launch(headless=False)
+            except Exception as exc:
+                message = str(exc)
+
+                if "Executable doesn't exist" in message or "playwright install" in message.lower():
+                    raise MissingBrowserError(
+                        "Playwright browser not installed.\n\n"
+                        "Run:\n"
+                        "  playwright install chromium"
+                    ) from exc
+
+                raise
+
             context = browser.new_context()
             page = context.new_page()
 
