@@ -133,3 +133,7 @@ class ExamOpportunity(BaseModel):
     day: Optional[str] = None
     start_time: Optional[str] = None
     end_time: Optional[str] = None
+
+class CourseLink(BaseModel):
+    course_code: str
+    study_guide_url: str

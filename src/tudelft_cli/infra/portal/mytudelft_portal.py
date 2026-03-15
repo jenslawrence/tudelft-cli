@@ -18,6 +18,7 @@ from tudelft_cli.domain.models import (
     SuggestedCourse,
     SuggestedExamCourse,
     ExamOpportunity,
+    CourseLink
 )
 
 class MyTUDelftPortal(StudentPortal):
@@ -32,6 +33,7 @@ class MyTUDelftPortal(StudentPortal):
     )
     EXAM_OPPORTUNITIES_URL = f"{BASE_URL}/student/cursussen_voor_toetsinschrijving"
     EXAM_ENROLLMENTS_URL = f"{BASE_URL}/student/inschrijvingen/toetsen/"
+    STUDY_GUIDE_DEEPLINK_URL = "https://studiegids.tudelft.nl/courses/deeplink"
 
     def _build_headers(self, session: AuthSession) -> dict[str, str]:
         if not session.access_token:
@@ -44,6 +46,14 @@ class MyTUDelftPortal(StudentPortal):
             "Content-Type": "application/json",
             "taal": "NL",
         }
+    
+    def get_course_link(self, course_code: str) -> CourseLink:
+        normalized = course_code.strip().upper()
+        if not normalized:
+            raise ValidationError("Provide a course code.")
+
+        url = f"{self.STUDY_GUIDE_DEEPLINK_URL}?code={normalized}"
+        return CourseLink(course_code=normalized, study_guide_url=url)
 
     def get_profile(self, session: AuthSession) -> StudentProfile:
         url = f"{self.BASE_URL}/gebruiker"

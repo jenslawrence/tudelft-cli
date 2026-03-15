@@ -13,6 +13,7 @@ from tudelft_cli.domain.models import (
     SuggestedCourse,
     ExamOpportunity,
     SuggestedExamCourse,
+    CourseLink,
 )
 
 class AuthProvider(ABC):
@@ -77,4 +78,8 @@ class StudentPortal(ABC):
         session: AuthSession,
         course_code: str,
     ) -> tuple[SuggestedExamCourse, list[ExamOpportunity]]:
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_course_link(self, course_code: str) -> CourseLink:
         raise NotImplementedError
