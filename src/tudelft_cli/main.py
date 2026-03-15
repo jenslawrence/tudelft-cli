@@ -1,3 +1,6 @@
+import sys
+
+from tudelft_cli.cli.shell import run_shell
 from tudelft_cli.cli.auth import app as auth_app
 from tudelft_cli.cli.ec import app as ec_app
 from tudelft_cli.cli.enroll_courses import app as enroll_courses_app
@@ -35,7 +38,10 @@ app.add_typer(suggest_courses_app)
 app.add_typer(enroll_courses_app)
 
 def main() -> None:
-    app()
+    if len(sys.argv) == 1:
+        run_shell()
+    else:
+        app()
 
 if __name__ == "__main__":
     main()
