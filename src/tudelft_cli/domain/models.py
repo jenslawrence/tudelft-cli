@@ -46,3 +46,42 @@ class EcPhaseProgress(BaseModel):
 
 class EcProgress(BaseModel):
     items: list[EcPhaseProgress]
+
+class SuggestedCourse(BaseModel):
+    course_offering_id: int
+    course_id: int
+    course_code: str
+    academic_year: Optional[str] = None
+    block: Optional[str] = None
+    period_description: Optional[str] = None
+    period_date_range: Optional[str] = None
+    course_name: str
+    faculty: Optional[str] = None
+    category: Optional[str] = None
+    ec: Optional[str] = None
+    ec_unit: Optional[str] = None
+    availability: Optional[bool] = None
+    waiting_list: Optional[bool] = None
+    coordinating_unit: Optional[str] = None
+    course_type: Optional[str] = None
+    teaching_form_description: Optional[str] = None
+    course_note: Optional[str] = None
+    course_block_note: Optional[str] = None
+    programme_part: Optional[str] = None
+
+
+class CourseEnrollment(BaseModel):
+    course_offering_id: int
+    course_id: int
+    course_code: str
+    academic_year: Optional[int] = None
+    block: Optional[str] = None
+    period_description: Optional[str] = None
+    period_date_range: Optional[str] = None
+    course_name: str
+    ec: Optional[float] = None
+    ec_unit: Optional[str] = None
+    programme_part: Optional[str] = None
+    can_unenroll: Optional[bool] = None
+    is_new: Optional[bool] = None
+    is_historical: Optional[bool] = None
