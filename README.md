@@ -19,7 +19,7 @@ Current functionality includes:
 - Enroll in courses directly from the terminal
 - Interactive shell mode
 
-![Shell Preview](docs/shell-preview.png)
+![Shell Preview](docs/shell-preview2.png)
 
 ---
 
