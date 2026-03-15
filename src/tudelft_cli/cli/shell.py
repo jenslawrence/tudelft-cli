@@ -68,6 +68,8 @@ def run_shell() -> None:
 
         try:
             parts = shlex.split(command)
+            if parts and parts[0] == "whoami" and "--pretty" not in parts:
+                parts.append("--pretty")
             app(prog_name="tudelft", args=parts)
         except SystemExit:
             pass

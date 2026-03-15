@@ -18,10 +18,8 @@ class AuthSession(BaseModel):
 
 class StudentProfile(BaseModel):
     name: str
-    netid: Optional[str] = None
     student_number: Optional[str] = None
-    programme: Optional[str] = None
-    faculty: Optional[str] = None
+    email: Optional[str] = None
 
 
 class Grade(BaseModel):

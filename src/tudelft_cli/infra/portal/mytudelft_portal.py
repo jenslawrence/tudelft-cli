@@ -87,10 +87,8 @@ class MyTUDelftPortal(StudentPortal):
 
         return StudentProfile(
             name=f"{roepnaam} {achternaam}".strip(),
-            netid=None,
             student_number=self._as_optional_string(payload.get("studentnummer")),
-            programme=None,
-            faculty=None,
+            email=self._as_optional_string(payload.get("e_mailadres")),
         )
 
     def get_grades(self, session: AuthSession) -> Sequence[Grade]:
