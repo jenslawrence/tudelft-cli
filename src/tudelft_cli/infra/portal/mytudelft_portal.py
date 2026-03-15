@@ -91,7 +91,7 @@ class MyTUDelftPortal(StudentPortal):
             email=self._as_optional_string(payload.get("e_mailadres")),
         )
 
-    def get_grades(self, session: AuthSession) -> Sequence[Grade]:
+    def get_grades(self, session: AuthSession, final_only: bool = False) -> Sequence[Grade]:
         headers = self._build_headers(session)
         url = f"{self.BASE_URL}/student/resultaten"
 
@@ -136,7 +136,15 @@ class MyTUDelftPortal(StudentPortal):
             for item in items:
                 if not isinstance(item, dict):
                     continue
-                grades.append(self._map_grade(item))
+
+                grade = self._map_grade(item)
+
+                if final_only:
+                    component = grade.component.strip().lower()
+                    if component not in {"final", "final grade"}:
+                        continue
+
+                grades.append(grade)
 
             if not has_more:
                 break

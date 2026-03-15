@@ -8,8 +8,8 @@ class GetGradesService:
         self.auth_provider = auth_provider
         self.portal = portal
 
-    def execute(self) -> list[Grade]:
+    def execute(self, final_only: bool = False) -> list[Grade]:
         session = self.auth_provider.load_session()
         if session is None:
             raise AuthenticationError("Not logged in. Run 'tudelft login' first.")
-        return list(self.portal.get_grades(session))
+        return list(self.portal.get_grades(session, final_only=final_only))
