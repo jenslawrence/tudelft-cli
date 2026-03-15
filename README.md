@@ -4,6 +4,8 @@ An unofficial command-line interface for TU Delft student portal workflows.
 
 TU Delft CLI connects to `my.tudelft.nl` and allows students to access common academic information directly from the terminal, including grades, EC progress, enrollments, curriculum data, and course enrollment workflows.
 
+![Shell Preview](docs/shell-preview2.png)
+
 ---
 
 ## Features
@@ -18,8 +20,6 @@ Current functionality includes:
 - Suggest currently available courses from your fixed programme
 - Enroll in courses directly from the terminal
 - Interactive shell mode
-
-![Shell Preview](docs/shell-preview2.png)
 
 ---
 
