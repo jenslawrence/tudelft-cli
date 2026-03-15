@@ -5,7 +5,6 @@ from pathlib import Path
 from prompt_toolkit.history import FileHistory
 from prompt_toolkit import PromptSession
 
-from tudelft_cli.cli.root import app
 from tudelft_cli.infra.auth.browser_auth import BrowserAuthProvider
 from tudelft_cli.infra.auth.session_store import SessionStore
 from tudelft_cli.infra.portal.mytudelft_portal import MyTUDelftPortal
@@ -34,6 +33,8 @@ BANNER = r"""
 
 
 def run_shell() -> None:
+    from tudelft_cli.main import app
+
     _render_shell_home()
 
     history_path = Path.home() / ".config" / "tudelft-cli" / "shell_history"
