@@ -11,6 +11,8 @@ from tudelft_cli.domain.models import (
     Grade,
     StudentProfile,
     SuggestedCourse,
+    ExamOpportunity,
+    SuggestedExamCourse,
 )
 
 class AuthProvider(ABC):
@@ -54,4 +56,25 @@ class StudentPortal(ABC):
 
     @abstractmethod
     def enroll_courses(self, session: AuthSession, course_codes: list[str]) -> list[CourseEnrollment]:
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_suggested_exam_courses(self, session: AuthSession) -> list[SuggestedExamCourse]:
+        raise NotImplementedError
+
+    @abstractmethod
+    def enroll_exam(
+        self,
+        session: AuthSession,
+        course_code: str,
+        selection: int | None = None,
+    ) -> list[ExamEnrollment]:
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_exam_opportunities(
+        self,
+        session: AuthSession,
+        course_code: str,
+    ) -> tuple[SuggestedExamCourse, list[ExamOpportunity]]:
         raise NotImplementedError

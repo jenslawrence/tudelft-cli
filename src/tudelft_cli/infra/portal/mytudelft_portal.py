@@ -16,6 +16,8 @@ from tudelft_cli.domain.models import (
     Grade,
     StudentProfile,
     SuggestedCourse,
+    SuggestedExamCourse,
+    ExamOpportunity,
 )
 
 class MyTUDelftPortal(StudentPortal):
@@ -25,7 +27,11 @@ class MyTUDelftPortal(StudentPortal):
     f"{BASE_URL}/student/cursussen_voor_cursusinschrijving/te_volgen_onderwijs/open_voor_inschrijving/"
 )
     COURSE_ENROLLMENTS_URL = f"{BASE_URL}/student/inschrijvingen/cursussen"
-    EXAM_ENROLLMENTS_URL = f"{BASE_URL}/student/inschrijvingen/toetsen"
+    EXAM_SUGGESTIONS_URL = (
+        f"{BASE_URL}/student/cursussen_voor_toetsinschrijving/te_volgen_onderwijs/open_voor_inschrijving/"
+    )
+    EXAM_OPPORTUNITIES_URL = f"{BASE_URL}/student/cursussen_voor_toetsinschrijving"
+    EXAM_ENROLLMENTS_URL = f"{BASE_URL}/student/inschrijvingen/toetsen/"
 
     def _build_headers(self, session: AuthSession) -> dict[str, str]:
         if not session.access_token:
@@ -338,6 +344,102 @@ class MyTUDelftPortal(StudentPortal):
             exams.append(self._map_exam_enrollment(item))
 
         return exams
+    
+    def get_suggested_exam_courses(self, session: AuthSession) -> list[SuggestedExamCourse]:
+        try:
+            response = httpx.get(
+                self.EXAM_SUGGESTIONS_URL,
+                headers=self._build_headers(session),
+                params={"limit": 9999},
+                timeout=30.0,
+            )
+        except httpx.HTTPError as exc:
+            raise AuthenticationError(f"Request to TU Delft portal failed: {exc}") from exc
+
+        if response.status_code == 401:
+            raise AuthenticationError("Stored session is no longer valid. Run 'tudelft login' again.")
+
+        if response.status_code != 200:
+            raise PortalChangedError(
+                f"Unexpected response from suggested exams endpoint: {response.status_code}"
+            )
+
+        try:
+            payload = response.json()
+        except ValueError as exc:
+            raise PortalChangedError("Suggested exams endpoint did not return valid JSON.") from exc
+
+        items = payload.get("items")
+        if not isinstance(items, list):
+            raise PortalChangedError("Suggested exams payload is missing expected items.")
+
+        return [self._map_suggested_exam_course(item) for item in items if isinstance(item, dict)]
+
+    def get_exam_opportunities(
+        self,
+        session: AuthSession,
+        course_code: str,
+    ) -> tuple[SuggestedExamCourse, list[ExamOpportunity]]:
+        suggestions = self.get_suggested_exam_courses(session)
+        selected_course = next(
+            (course for course in suggestions if course.course_code.upper() == course_code.upper()),
+            None,
+        )
+        if selected_course is None:
+            raise ValidationError(f"Course not found in suggested exams: {course_code}")
+
+        _, opportunities, _ = self._get_exam_opportunities(session, selected_course.course_id)
+        return selected_course, opportunities
+
+    def _get_exam_opportunities(
+        self,
+        session: AuthSession,
+        course_id: int,
+    ) -> tuple[SuggestedExamCourse, list[ExamOpportunity], list[dict[str, Any]]]:
+        try:
+            response = httpx.get(
+                f"{self.EXAM_OPPORTUNITIES_URL}/{course_id}",
+                headers=self._build_headers(session),
+                timeout=30.0,
+            )
+        except httpx.HTTPError as exc:
+            raise AuthenticationError(f"Request to TU Delft portal failed: {exc}") from exc
+
+        if response.status_code == 401:
+            raise AuthenticationError("Stored session is no longer valid. Run 'tudelft login' again.")
+
+        if response.status_code != 200:
+            raise PortalChangedError(
+                f"Unexpected response from exam opportunities endpoint: {response.status_code}"
+            )
+
+        try:
+            payload = response.json()
+        except ValueError as exc:
+            raise PortalChangedError("Exam opportunities endpoint did not return valid JSON.") from exc
+
+        toetsen = payload.get("toetsen")
+        if not isinstance(toetsen, list):
+            raise PortalChangedError("Exam opportunities payload is missing expected toetsen list.")
+
+        course = SuggestedExamCourse(
+            course_id=int(payload["id_cursus"]),
+            course_code=self._required_string(payload, "cursus"),
+            academic_year=self._parse_int(payload.get("collegejaar")),
+            course_name=self._required_string(payload, "cursus_korte_naam"),
+            ec=self._parse_float(payload.get("punten")),
+            ec_unit=self._as_optional_string(payload.get("punteneenheid")),
+            faculty=self._as_optional_string(payload.get("faculteit_naam")),
+            category=self._as_optional_string(payload.get("categorie_omschrijving")),
+            course_type=self._as_optional_string(payload.get("cursustype_omschrijving")),
+            programme_part=self._as_optional_string(payload.get("onderdeel_van")),
+        )
+
+        opportunities = [
+            self._map_exam_opportunity(item) for item in toetsen if isinstance(item, dict)
+        ]
+        raw_items = [item for item in toetsen if isinstance(item, dict)]
+        return course, opportunities, raw_items
 
     def enroll_courses(self, session: AuthSession, course_codes: list[str]) -> list[CourseEnrollment]:
         suggestions = self.get_suggested_courses(session)
@@ -392,6 +494,74 @@ class MyTUDelftPortal(StudentPortal):
 
         return [item for item in enrollments if item.course_code.upper() in set(course_codes)]
 
+    def enroll_exam(
+        self,
+        session: AuthSession,
+        course_code: str,
+        selection: int | None = None,
+    ) -> list[ExamEnrollment]:
+        suggestions = self.get_suggested_exam_courses(session)
+        selected_course = next(
+            (course for course in suggestions if course.course_code.upper() == course_code.upper()),
+            None,
+        )
+        if selected_course is None:
+            raise ValidationError(f"Course not found in suggested exams: {course_code}")
+
+        _, opportunities, raw_items = self._get_exam_opportunities(session, selected_course.course_id)
+
+        if not opportunities:
+            raise ValidationError(f"No available exam opportunities found for {course_code}")
+
+        if selection is None:
+            if len(opportunities) != 1:
+                raise ValidationError(
+                    f"{course_code} has multiple exam opportunities. Provide --select <number>."
+                )
+            selected_index = 0
+        else:
+            selected_index = selection - 1
+            if selected_index < 0 or selected_index >= len(opportunities):
+                raise ValidationError("Selected exam opportunity number is out of range.")
+
+        raw_exam = dict(raw_items[selected_index])
+        raw_exam["voorzieningen"] = raw_exam.get("voorzieningen", [])
+        raw_exam["renderIndex"] = 0
+
+        if raw_exam.get("tijd_vanaf") is not None:
+            raw_exam["tijd_vanaf"] = self._format_time_decimal(raw_exam["tijd_vanaf"])
+        if raw_exam.get("tijd_tm") is not None:
+            raw_exam["tijd_tm"] = self._format_time_decimal(raw_exam["tijd_tm"])
+
+        payload = {"toetsen": [raw_exam]}
+
+        try:
+            response = httpx.post(
+                self.EXAM_ENROLLMENTS_URL,
+                headers=self._build_headers(session),
+                json=payload,
+                timeout=30.0,
+            )
+        except httpx.HTTPError as exc:
+            raise AuthenticationError(f"Request to TU Delft portal failed: {exc}") from exc
+
+        if response.status_code == 401:
+            raise AuthenticationError("Stored session is no longer valid. Run 'tudelft login' again.")
+
+        if response.status_code != 200:
+            raise PortalChangedError(
+                f"Unexpected response while enrolling exam for {course_code}: {response.status_code}"
+            )
+
+        enrollments = self.get_exam_enrollments(session)
+        selected_offering_id = opportunities[selected_index].exam_offering_id
+        matching = [item for item in enrollments if item.exam_offering_id == selected_offering_id]
+
+        if not matching:
+            raise PortalChangedError(f"Exam enrollment could not be verified for {course_code}")
+
+        return matching
+
     def _map_suggested_course(self, item: dict[str, Any]) -> SuggestedCourse:
         return SuggestedCourse(
             course_offering_id=int(item["id_cursus_blok"]),
@@ -414,6 +584,36 @@ class MyTUDelftPortal(StudentPortal):
             course_note=self._as_optional_string(item.get("opmerking_cursus")),
             course_block_note=self._as_optional_string(item.get("opmerking_cursus_blok")),
             programme_part=self._as_optional_string(item.get("onderdeel_van")),
+        )
+
+    def _map_suggested_exam_course(self, item: dict[str, Any]) -> SuggestedExamCourse:
+        return SuggestedExamCourse(
+            course_id=int(item["id_cursus"]),
+            course_code=self._required_string(item, "cursus"),
+            academic_year=self._parse_int(item.get("collegejaar")),
+            course_name=self._required_string(item, "cursus_korte_naam"),
+            ec=self._parse_float(item.get("punten")),
+            ec_unit=self._as_optional_string(item.get("punteneenheid")),
+            faculty=self._as_optional_string(item.get("faculteit_naam")),
+            category=self._as_optional_string(item.get("categorie_omschrijving")),
+            course_type=self._as_optional_string(item.get("cursustype_omschrijving")),
+            programme_part=self._as_optional_string(item.get("onderdeel_van")),
+        )
+
+    def _map_exam_opportunity(self, item: dict[str, Any]) -> ExamOpportunity:
+        return ExamOpportunity(
+            course_id=int(item["id_cursus"]),
+            exam_offering_id=int(item["id_toets_gelegenheid"]),
+            test_code=self._as_optional_string(item.get("toets")),
+            test_description=self._as_optional_string(item.get("toets_omschrijving")),
+            test_type_description=self._as_optional_string(item.get("toetsvorm_omschrijving")),
+            block=self._as_optional_string(item.get("blok")),
+            period_description=self._as_optional_string(item.get("periode_omschrijving")),
+            opportunity=self._parse_int(item.get("gelegenheid")),
+            exam_datetime=self._parse_datetime(item.get("toetsdatum")),
+            day=self._as_optional_string(item.get("dag")),
+            start_time=self._format_time_decimal(item.get("tijd_vanaf")),
+            end_time=self._format_time_decimal(item.get("tijd_tm")),
         )
 
     def _map_course_enrollment(self, item: dict[str, Any]) -> CourseEnrollment:

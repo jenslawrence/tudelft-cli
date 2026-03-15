@@ -107,3 +107,29 @@ class ExamEnrollment(BaseModel):
     result: Optional[str] = None
     is_historical: Optional[bool] = None
 
+class SuggestedExamCourse(BaseModel):
+    course_id: int
+    course_code: str
+    academic_year: Optional[int] = None
+    course_name: str
+    ec: Optional[float] = None
+    ec_unit: Optional[str] = None
+    faculty: Optional[str] = None
+    category: Optional[str] = None
+    course_type: Optional[str] = None
+    programme_part: Optional[str] = None
+
+
+class ExamOpportunity(BaseModel):
+    course_id: int
+    exam_offering_id: int
+    test_code: Optional[str] = None
+    test_description: Optional[str] = None
+    test_type_description: Optional[str] = None
+    block: Optional[str] = None
+    period_description: Optional[str] = None
+    opportunity: Optional[int] = None
+    exam_datetime: Optional[datetime] = None
+    day: Optional[str] = None
+    start_time: Optional[str] = None
+    end_time: Optional[str] = None

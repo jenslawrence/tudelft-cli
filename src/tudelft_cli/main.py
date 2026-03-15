@@ -7,6 +7,8 @@ from tudelft_cli.cli.enroll_courses import app as enroll_courses_app
 from tudelft_cli.cli.suggest_courses import app as suggest_courses_app
 from tudelft_cli.cli.grades import app as grades_app
 from tudelft_cli.cli.enrollments import app as enrollments_app
+from tudelft_cli.cli.suggest_exams import app as suggest_exams_app
+from tudelft_cli.cli.enroll_exam import app as enroll_exam_app
 from tudelft_cli.cli.root import app
 
 
@@ -36,6 +38,8 @@ app.add_typer(ec_app)
 app.add_typer(enrollments_app)
 app.add_typer(suggest_courses_app)
 app.add_typer(enroll_courses_app)
+app.add_typer(suggest_exams_app)
+app.add_typer(enroll_exam_app)
 
 def main() -> None:
     if len(sys.argv) == 1:
