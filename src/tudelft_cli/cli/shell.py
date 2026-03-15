@@ -1,6 +1,9 @@
 import shlex
 
 from rich.console import Console
+from pathlib import Path
+from prompt_toolkit.history import FileHistory
+from prompt_toolkit import PromptSession
 
 from tudelft_cli.cli.root import app
 from tudelft_cli.infra.auth.browser_auth import BrowserAuthProvider
@@ -33,9 +36,14 @@ BANNER = r"""
 def run_shell() -> None:
     _render_shell_home()
 
+    history_path = Path.home() / ".config" / "tudelft-cli" / "shell_history"
+    history_path.parent.mkdir(parents=True, exist_ok=True)
+
+    session = PromptSession(history=FileHistory(str(history_path)))
+
     while True:
         try:
-            command = input("tudelft> ").strip()
+            command = session.prompt("tudelft> ").strip()
         except (EOFError, KeyboardInterrupt):
             console.print()
             break
@@ -59,7 +67,7 @@ def run_shell() -> None:
 
         try:
             parts = shlex.split(command)
-            app(parts)
+            app(prog_name="tudelft", args=parts)
         except SystemExit:
             pass
         except Exception as exc:
