@@ -7,10 +7,11 @@ from tudelft_cli.cli.enroll_exam import app as enroll_exam_app
 from tudelft_cli.cli.enroll_courses import app as enroll_courses_app
 from tudelft_cli.cli.enrollments import app as enrollments_app
 from tudelft_cli.cli.grades import app as grades_app
-from tudelft_cli.cli.root import app as root_app
-from tudelft_cli.cli.shell import run_shell
+from tudelft_cli.cli.ec import app as ec_app
 from tudelft_cli.cli.suggest_courses import app as suggest_courses_app
 from tudelft_cli.cli.suggest_exams import app as suggest_exams_app
+from tudelft_cli.cli.root import app as root_app
+from tudelft_cli.cli.shell import run_shell
 
 
 app = typer.Typer(
@@ -32,6 +33,7 @@ def main_callback() -> None:
 
 app.add_typer(auth_app, help="Authentication commands.")
 app.add_typer(grades_app, help="Grade and progress commands.")
+app.add_typer(ec_app, help="EC and progress commands.")
 app.add_typer(enrollments_app, help="Enrollment overview commands.")
 app.add_typer(suggest_courses_app, help="Suggested course enrollment commands.")
 app.add_typer(suggest_exams_app, help="Suggested exam enrollment commands.")
