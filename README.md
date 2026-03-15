@@ -154,8 +154,6 @@ TU Delft portal APIs may change without notice.
 
 Planned features:
 
-- Exam enrollment
-- Exam suggestions from fixed programme
 - Smarter enrollment recommendations
 - Auto-update checks
 - PyPI release
