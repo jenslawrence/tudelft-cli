@@ -11,6 +11,7 @@ dependencies = [
   "rich>=13.7",
   "keyring>=25.2",
   "playwright>=1.46",
+  "questionary>=2.0",
 ]
 
 [project.scripts]
