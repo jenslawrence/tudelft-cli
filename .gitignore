@@ -14,3 +14,6 @@ session.json
 
 # playwright browser artifacts
 playwright-report/
+
+.idea/
+*.iml
