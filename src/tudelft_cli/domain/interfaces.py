@@ -36,7 +36,7 @@ class StudentPortal(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def get_grades(self, session: AuthSession) -> Sequence[Grade]:
+    def get_grades(self, session: AuthSession, final_only: bool = False) -> Sequence[Grade]:
         raise NotImplementedError
 
     @abstractmethod

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any, Sequence
+from typing import Any, Sequence, SupportsFloat, SupportsIndex
 
 import httpx
 
@@ -772,6 +772,12 @@ class MyTUDelftPortal(StudentPortal):
     def _format_time_decimal(value: object) -> str | None:
         if value is None or value == "":
             return None
+
+        if not isinstance(
+            value,
+            (str, bytes, bytearray, memoryview, SupportsFloat, SupportsIndex),
+        ):
+            return str(value)
 
         try:
             number = float(value)
