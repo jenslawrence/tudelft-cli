@@ -1,0 +1,16 @@
+{
+  "items": [
+    {
+      "id_cursus": "501",
+      "cursus": "CSE2000",
+      "collegejaar": "2025",
+      "cursus_korte_naam": "Software Project",
+      "punten": "10",
+      "punteneenheid": "EC",
+      "faculteit_naam": "EEMCS",
+      "categorie_omschrijving": "Mandatory",
+      "cursustype_omschrijving": "Course",
+      "onderdeel_van": "BSc CSE"
+    }
+  ]
+}

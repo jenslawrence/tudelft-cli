@@ -1,0 +1,33 @@
+{
+  "items": [
+    {
+      "opleiding_naam": "Computer Science",
+      "examenfases": [
+        {
+          "faculteit": "EEMCS",
+          "examenprogramma_naam": "BSc CSE",
+          "examenfase_omschrijving": "Bachelor year 1",
+          "punten_behaald": "42",
+          "minimum_punten": "60",
+          "percentage_behaald": "70",
+          "voldaan": "N",
+          "overige_behaalde_punten": "3"
+        },
+        {
+          "faculteit": "EEMCS",
+          "examenprogramma_naam": "BSc CSE",
+          "examenfase_omschrijving": "Bachelor year 2",
+          "punten_behaald": "60",
+          "minimum_punten": "60",
+          "percentage_behaald": "100",
+          "voldaan": "J",
+          "overige_behaalde_punten": ""
+        }
+      ]
+    },
+    {
+      "opleiding_naam": "Skipped programme without phases",
+      "examenfases": null
+    }
+  ]
+}

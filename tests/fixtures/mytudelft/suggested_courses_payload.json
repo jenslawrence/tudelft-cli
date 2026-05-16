@@ -1,0 +1,23 @@
+{
+  "items": [
+    {
+      "id_cursus_blok": "1001",
+      "id_cursus": "501",
+      "cursus": "CSE2000",
+      "collegejaar": "2025",
+      "blok": "Q3",
+      "periode_omschrijving": "Semester 2",
+      "cursus_korte_naam": "Software Project",
+      "faculteit_naam": "EEMCS",
+      "categorie_omschrijving": "Mandatory",
+      "punten": "10",
+      "punteneenheid": "EC",
+      "coordinerend_onderdeel_oms": "Software Engineering",
+      "cursustype_omschrijving": "Course",
+      "onderwijsvorm_omschrijving": "Project",
+      "opmerking_cursus": "Course note",
+      "opmerking_cursus_blok": "Block note",
+      "onderdeel_van": "BSc CSE"
+    }
+  ]
+}

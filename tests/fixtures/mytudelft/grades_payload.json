@@ -1,0 +1,29 @@
+{
+  "items": [
+    {
+      "cursus": "CSE1010",
+      "cursus_korte_naam": "Algorithms",
+      "toets_omschrijving": "Final",
+      "resultaat": "8.5",
+      "voldoende": "J",
+      "mutatiedatum": "2026-01-12T10:15:00Z"
+    },
+    {
+      "cursus": "CSE1020",
+      "cursus_korte_naam": "Databases",
+      "toets_omschrijving": "Assignment",
+      "resultaat": "5.0",
+      "voldoende": "N",
+      "mutatiedatum": "not-a-date"
+    },
+    {
+      "cursus": "CSE1030",
+      "cursus_korte_naam": "Networks",
+      "toets_omschrijving": "Final grade",
+      "resultaat": "V",
+      "voldoende": "?",
+      "mutatiedatum": ""
+    }
+  ],
+  "hasMore": false
+}

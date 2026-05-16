@@ -1,0 +1,42 @@
+{
+  "id_cursus": "501",
+  "cursus": "CSE2000",
+  "collegejaar": "2025",
+  "cursus_korte_naam": "Software Project",
+  "punten": "10",
+  "punteneenheid": "EC",
+  "faculteit_naam": "EEMCS",
+  "categorie_omschrijving": "Mandatory",
+  "cursustype_omschrijving": "Course",
+  "onderdeel_van": "BSc CSE",
+  "toetsen": [
+    {
+      "id_cursus": "501",
+      "id_toets_gelegenheid": "9001",
+      "toets": "T1",
+      "toets_omschrijving": "Written exam",
+      "toetsvorm_omschrijving": "Written",
+      "blok": "Q4",
+      "periode_omschrijving": "Exam period",
+      "gelegenheid": "1",
+      "toetsdatum": "2026-04-20T09:00:00Z",
+      "dag": "Monday",
+      "tijd_vanaf": "9.5",
+      "tijd_tm": "12.75"
+    },
+    {
+      "id_cursus": "501",
+      "id_toets_gelegenheid": "9002",
+      "toets": "T2",
+      "toets_omschrijving": "Resit",
+      "toetsvorm_omschrijving": "Written",
+      "blok": "Q4",
+      "periode_omschrijving": "Resit period",
+      "gelegenheid": "2",
+      "toetsdatum": "",
+      "dag": "Tuesday",
+      "tijd_vanaf": "morning",
+      "tijd_tm": ""
+    }
+  ]
+}
