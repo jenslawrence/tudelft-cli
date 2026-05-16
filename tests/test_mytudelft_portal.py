@@ -8,7 +8,7 @@ from typing import Any
 
 import pytest
 
-from tudelft_cli.domain.errors import PortalChangedError
+from tudelft_cli.domain.errors import PortalChangedError, ValidationError
 from tudelft_cli.domain.models import AuthSession
 from tudelft_cli.infra.portal import mytudelft_portal
 from tudelft_cli.infra.portal.mytudelft_portal import MyTUDelftPortal
@@ -247,13 +247,18 @@ def test_course_enrollment_success_verifies_current_enrollment(
 ) -> None:
     fake_http.add(
         "GET",
+        MyTUDelftPortal.COURSE_ENROLLMENTS_URL,
+        FakeResponse(200, {"items": []}),
+    )
+    fake_http.add(
+        "GET",
         MyTUDelftPortal.COURSE_SUGGESTIONS_URL,
         FakeResponse(200, load_fixture("suggested_courses_payload.json")),
     )
     fake_http.add(
         "PUT",
         f"{MyTUDelftPortal.COURSE_ENROLLMENTS_URL}/1001",
-        FakeResponse(200, {"statusmeldingen": []}),
+        FakeResponse(200, {"statusmeldingen": [{"type": "INFO", "tekst": "Ingeschreven"}]}),
     )
     fake_http.add(
         "GET",
@@ -270,10 +275,31 @@ def test_course_enrollment_success_verifies_current_enrollment(
     assert put_call["json"]["punten"] == 10.0
 
 
-def test_course_enrollment_accepts_status_messages_without_inspecting_them(
+def test_course_enrollment_returns_existing_enrollment_without_mutation(
     fake_http: FakeHttp,
     session: AuthSession,
 ) -> None:
+    fake_http.add(
+        "GET",
+        MyTUDelftPortal.COURSE_ENROLLMENTS_URL,
+        FakeResponse(200, load_fixture("course_enrollments_payload.json")),
+    )
+
+    enrollments = MyTUDelftPortal().enroll_courses(session, ["CSE2000"])
+
+    assert [enrollment.course_code for enrollment in enrollments] == ["CSE2000"]
+    assert not [call for call in fake_http.calls if call["method"] == "PUT"]
+
+
+def test_course_enrollment_rejects_explicit_portal_failure_message(
+    fake_http: FakeHttp,
+    session: AuthSession,
+) -> None:
+    fake_http.add(
+        "GET",
+        MyTUDelftPortal.COURSE_ENROLLMENTS_URL,
+        FakeResponse(200, {"items": []}),
+    )
     fake_http.add(
         "GET",
         MyTUDelftPortal.COURSE_SUGGESTIONS_URL,
@@ -284,21 +310,20 @@ def test_course_enrollment_accepts_status_messages_without_inspecting_them(
         f"{MyTUDelftPortal.COURSE_ENROLLMENTS_URL}/1001",
         FakeResponse(200, {"statusmeldingen": [{"type": "ERROR", "tekst": "Already full"}]}),
     )
-    fake_http.add(
-        "GET",
-        MyTUDelftPortal.COURSE_ENROLLMENTS_URL,
-        FakeResponse(200, load_fixture("course_enrollments_payload.json")),
-    )
 
-    enrollments = MyTUDelftPortal().enroll_courses(session, ["CSE2000"])
-
-    assert [enrollment.course_code for enrollment in enrollments] == ["CSE2000"]
+    with pytest.raises(ValidationError, match="Portal rejected course enrollment for CSE2000"):
+        MyTUDelftPortal().enroll_courses(session, ["CSE2000"])
 
 
 def test_course_enrollment_rejects_missing_status_messages(
     fake_http: FakeHttp,
     session: AuthSession,
 ) -> None:
+    fake_http.add(
+        "GET",
+        MyTUDelftPortal.COURSE_ENROLLMENTS_URL,
+        FakeResponse(200, {"items": []}),
+    )
     fake_http.add(
         "GET",
         MyTUDelftPortal.COURSE_SUGGESTIONS_URL,
@@ -318,6 +343,11 @@ def test_course_enrollment_fails_when_verification_enrollment_is_absent(
     fake_http: FakeHttp,
     session: AuthSession,
 ) -> None:
+    fake_http.add(
+        "GET",
+        MyTUDelftPortal.COURSE_ENROLLMENTS_URL,
+        FakeResponse(200, {"items": []}),
+    )
     fake_http.add(
         "GET",
         MyTUDelftPortal.COURSE_SUGGESTIONS_URL,
@@ -353,9 +383,14 @@ def test_exam_enrollment_verifies_by_exam_offering_id(
         FakeResponse(200, load_fixture("exam_opportunities_payload.json")),
     )
     fake_http.add(
+        "GET",
+        MyTUDelftPortal.EXAM_ENROLLMENTS_URL,
+        FakeResponse(200, {"items": []}),
+    )
+    fake_http.add(
         "POST",
         MyTUDelftPortal.EXAM_ENROLLMENTS_URL,
-        FakeResponse(200, {"ignored": "current implementation does not inspect this body"}),
+        FakeResponse(200, {"statusmeldingen": [{"type": "INFO", "tekst": "Ingeschreven"}]}),
     )
     fake_http.add(
         "GET",
@@ -374,6 +409,90 @@ def test_exam_enrollment_verifies_by_exam_offering_id(
     assert post_call["json"]["toetsen"][0]["renderIndex"] == 0
 
 
+def test_exam_enrollment_returns_existing_enrollment_without_mutation(
+    fake_http: FakeHttp,
+    session: AuthSession,
+) -> None:
+    fake_http.add(
+        "GET",
+        MyTUDelftPortal.EXAM_SUGGESTIONS_URL,
+        FakeResponse(200, load_fixture("suggested_exam_courses_payload.json")),
+    )
+    fake_http.add(
+        "GET",
+        f"{MyTUDelftPortal.EXAM_OPPORTUNITIES_URL}/501",
+        FakeResponse(200, load_fixture("exam_opportunities_payload.json")),
+    )
+    fake_http.add(
+        "GET",
+        MyTUDelftPortal.EXAM_ENROLLMENTS_URL,
+        FakeResponse(200, load_fixture("exam_enrollments_payload.json")),
+    )
+
+    enrollments = MyTUDelftPortal().enroll_exam(session, "CSE2000", selection=1)
+
+    assert [enrollment.exam_offering_id for enrollment in enrollments] == [9001]
+    assert not [call for call in fake_http.calls if call["method"] == "POST"]
+
+
+def test_exam_enrollment_rejects_explicit_portal_failure_message(
+    fake_http: FakeHttp,
+    session: AuthSession,
+) -> None:
+    fake_http.add(
+        "GET",
+        MyTUDelftPortal.EXAM_SUGGESTIONS_URL,
+        FakeResponse(200, load_fixture("suggested_exam_courses_payload.json")),
+    )
+    fake_http.add(
+        "GET",
+        f"{MyTUDelftPortal.EXAM_OPPORTUNITIES_URL}/501",
+        FakeResponse(200, load_fixture("exam_opportunities_payload.json")),
+    )
+    fake_http.add(
+        "GET",
+        MyTUDelftPortal.EXAM_ENROLLMENTS_URL,
+        FakeResponse(200, {"items": []}),
+    )
+    fake_http.add(
+        "POST",
+        MyTUDelftPortal.EXAM_ENROLLMENTS_URL,
+        FakeResponse(200, {"statusmeldingen": [{"type": "ERROR", "tekst": "Enrollment closed"}]}),
+    )
+
+    with pytest.raises(ValidationError, match="Portal rejected exam enrollment for CSE2000"):
+        MyTUDelftPortal().enroll_exam(session, "CSE2000", selection=1)
+
+
+def test_exam_enrollment_rejects_malformed_response(
+    fake_http: FakeHttp,
+    session: AuthSession,
+) -> None:
+    fake_http.add(
+        "GET",
+        MyTUDelftPortal.EXAM_SUGGESTIONS_URL,
+        FakeResponse(200, load_fixture("suggested_exam_courses_payload.json")),
+    )
+    fake_http.add(
+        "GET",
+        f"{MyTUDelftPortal.EXAM_OPPORTUNITIES_URL}/501",
+        FakeResponse(200, load_fixture("exam_opportunities_payload.json")),
+    )
+    fake_http.add(
+        "GET",
+        MyTUDelftPortal.EXAM_ENROLLMENTS_URL,
+        FakeResponse(200, {"items": []}),
+    )
+    fake_http.add(
+        "POST",
+        MyTUDelftPortal.EXAM_ENROLLMENTS_URL,
+        FakeResponse(200, ["not", "an", "object"]),
+    )
+
+    with pytest.raises(PortalChangedError, match="expected a JSON object"):
+        MyTUDelftPortal().enroll_exam(session, "CSE2000", selection=1)
+
+
 def test_exam_enrollment_fails_when_exam_offering_id_is_not_verified(
     fake_http: FakeHttp,
     session: AuthSession,
@@ -389,9 +508,14 @@ def test_exam_enrollment_fails_when_exam_offering_id_is_not_verified(
         FakeResponse(200, load_fixture("exam_opportunities_payload.json")),
     )
     fake_http.add(
+        "GET",
+        MyTUDelftPortal.EXAM_ENROLLMENTS_URL,
+        FakeResponse(200, {"items": []}),
+    )
+    fake_http.add(
         "POST",
         MyTUDelftPortal.EXAM_ENROLLMENTS_URL,
-        FakeResponse(200, {}),
+        FakeResponse(200, {"statusmeldingen": []}),
     )
     fake_http.add(
         "GET",

@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import datetime
+from enum import Enum
 from typing import Any, Sequence, SupportsFloat, SupportsIndex
 
 import httpx
@@ -9,17 +11,29 @@ from tudelft_cli.domain.errors import AuthenticationError, PortalChangedError, V
 from tudelft_cli.domain.interfaces import StudentPortal
 from tudelft_cli.domain.models import (
     AuthSession,
+    CourseLink,
     CourseEnrollment,
-    ExamEnrollment,
     EcPhaseProgress,
     EcProgress,
+    ExamEnrollment,
+    ExamOpportunity,
     Grade,
     StudentProfile,
     SuggestedCourse,
     SuggestedExamCourse,
-    ExamOpportunity,
-    CourseLink
 )
+
+
+class _EnrollmentResponseState(Enum):
+    ACCEPTED = "accepted"
+    ALREADY_ENROLLED = "already_enrolled"
+
+
+@dataclass(frozen=True)
+class _PortalStatusMessage:
+    severity: str | None
+    text: str
+
 
 class MyTUDelftPortal(StudentPortal):
     BASE_URL = "https://my.tudelft.nl/student/osiris"
@@ -34,6 +48,43 @@ class MyTUDelftPortal(StudentPortal):
     EXAM_OPPORTUNITIES_URL = f"{BASE_URL}/student/cursussen_voor_toetsinschrijving"
     EXAM_ENROLLMENTS_URL = f"{BASE_URL}/student/inschrijvingen/toetsen/"
     STUDY_GUIDE_DEEPLINK_URL = "https://studiegids.tudelft.nl/courses/deeplink"
+    _FAILURE_STATUS_TYPES = {
+        "ERROR",
+        "FOUT",
+        "FAIL",
+        "FAILED",
+        "FAILURE",
+        "DANGER",
+    }
+    _ALREADY_ENROLLED_TEXT_MARKERS = (
+        "already enrolled",
+        "already registered",
+        "already signed up",
+        "al ingeschreven",
+        "reeds ingeschreven",
+    )
+    _FAILURE_TEXT_MARKERS = (
+        "error",
+        "failed",
+        "failure",
+        "not possible",
+        "not allowed",
+        "not permitted",
+        "cannot",
+        "can't",
+        "closed",
+        "deadline",
+        "full",
+        "fout",
+        "mislukt",
+        "niet gelukt",
+        "niet mogelijk",
+        "niet toegestaan",
+        "kan niet",
+        "gesloten",
+        "vol",
+        "geen plaats",
+    )
 
     def _build_headers(self, session: AuthSession) -> dict[str, str]:
         if not session.access_token:
@@ -458,18 +509,26 @@ class MyTUDelftPortal(StudentPortal):
         return course, opportunities, raw_items
 
     def enroll_courses(self, session: AuthSession, course_codes: list[str]) -> list[CourseEnrollment]:
+        existing_enrollments = self.get_course_enrollments(session)
+        existing_codes = {item.course_code.upper() for item in existing_enrollments}
+        codes_to_enroll = [code for code in course_codes if code not in existing_codes]
+
+        if not codes_to_enroll:
+            return [
+                item for item in existing_enrollments if item.course_code.upper() in set(course_codes)
+            ]
+
         suggestions = self.get_suggested_courses(session)
         by_code = {course.course_code.upper(): course for course in suggestions}
 
-        missing = [code for code in course_codes if code not in by_code]
+        missing = [code for code in codes_to_enroll if code not in by_code]
         if missing:
-            raise ValidationError(
-                f"Course(s) not found in suggested courses: {', '.join(missing)}"
-            )
+            raise ValidationError(f"Course(s) not found in suggested courses: {', '.join(missing)}")
 
         headers = self._build_headers(session)
+        already_reported_by_portal: set[str] = set()
 
-        for code in course_codes:
+        for code in codes_to_enroll:
             course = by_code[code]
             url = f"{self.COURSE_ENROLLMENTS_URL}/{course.course_offering_id}"
             body = self._build_course_enrollment_payload(course)
@@ -494,18 +553,26 @@ class MyTUDelftPortal(StudentPortal):
                     f"Enrollment response for {code} did not return valid JSON."
                 ) from exc
 
-            statusmeldingen = payload.get("statusmeldingen")
-            if not isinstance(statusmeldingen, list):
-                raise PortalChangedError(
-                    f"Enrollment response for {code} is missing statusmeldingen."
-                )
+            state = self._validate_enrollment_response(payload, f"course enrollment for {code}")
+            if state is _EnrollmentResponseState.ALREADY_ENROLLED:
+                already_reported_by_portal.add(code)
 
         enrollments = self.get_course_enrollments(session)
         enrolled_codes = {item.course_code.upper() for item in enrollments}
-        not_verified = [code for code in course_codes if code not in enrolled_codes]
+        not_verified = [code for code in codes_to_enroll if code not in enrolled_codes]
         if not_verified:
+            already_not_verified = [
+                code for code in not_verified if code in already_reported_by_portal
+            ]
+            if already_not_verified:
+                raise PortalChangedError(
+                    "Portal reported course enrollment already existed, but current "
+                    f"enrollments do not include: {', '.join(already_not_verified)}"
+                )
             raise PortalChangedError(
-                f"Enrollment could not be verified for: {', '.join(not_verified)}"
+                "Enrollment could not be verified for: "
+                f"{', '.join(not_verified)}. The portal response did not contain a "
+                "failure message, but the course was not present afterwards."
             )
 
         return [item for item in enrollments if item.course_code.upper() in set(course_codes)]
@@ -540,6 +607,14 @@ class MyTUDelftPortal(StudentPortal):
             if selected_index < 0 or selected_index >= len(opportunities):
                 raise ValidationError("Selected exam opportunity number is out of range.")
 
+        selected_offering_id = opportunities[selected_index].exam_offering_id
+        existing_exam_enrollments = self.get_exam_enrollments(session)
+        existing_matching = [
+            item for item in existing_exam_enrollments if item.exam_offering_id == selected_offering_id
+        ]
+        if existing_matching:
+            return existing_matching
+
         raw_exam = dict(raw_items[selected_index])
         raw_exam["voorzieningen"] = raw_exam.get("voorzieningen", [])
         raw_exam["renderIndex"] = 0
@@ -569,14 +644,141 @@ class MyTUDelftPortal(StudentPortal):
                 f"Unexpected response while enrolling exam for {course_code}: {response.status_code}"
             )
 
+        try:
+            response_payload = response.json()
+        except ValueError as exc:
+            raise PortalChangedError(
+                f"Exam enrollment response for {course_code} did not return valid JSON."
+            ) from exc
+
+        state = self._validate_enrollment_response(
+            response_payload, f"exam enrollment for {course_code}"
+        )
+
         enrollments = self.get_exam_enrollments(session)
-        selected_offering_id = opportunities[selected_index].exam_offering_id
         matching = [item for item in enrollments if item.exam_offering_id == selected_offering_id]
 
         if not matching:
-            raise PortalChangedError(f"Exam enrollment could not be verified for {course_code}")
+            if state is _EnrollmentResponseState.ALREADY_ENROLLED:
+                raise PortalChangedError(
+                    f"Portal reported exam enrollment for {course_code} already existed, "
+                    f"but current enrollments do not include exam offering {selected_offering_id}."
+                )
+            raise PortalChangedError(
+                f"Exam enrollment could not be verified for {course_code}. The portal response "
+                f"did not contain a failure message, but exam offering {selected_offering_id} "
+                "was not present afterwards."
+            )
 
         return matching
+
+    def _validate_enrollment_response(
+        self, payload: object, action_description: str
+    ) -> _EnrollmentResponseState:
+        messages = self._extract_status_messages(payload, action_description)
+
+        if any(self._is_already_enrolled_message(message) for message in messages):
+            return _EnrollmentResponseState.ALREADY_ENROLLED
+
+        failure_messages = [
+            message
+            for message in messages
+            if self._is_failure_message(message)
+        ]
+        if failure_messages:
+            raise ValidationError(
+                f"Portal rejected {action_description}: "
+                f"{self._format_status_messages(failure_messages)}"
+            )
+
+        return _EnrollmentResponseState.ACCEPTED
+
+    def _extract_status_messages(
+        self, payload: object, action_description: str
+    ) -> list[_PortalStatusMessage]:
+        if not isinstance(payload, dict):
+            raise PortalChangedError(
+                f"Portal returned an unexpected response for {action_description}: "
+                "expected a JSON object with statusmeldingen."
+            )
+
+        statusmeldingen = payload.get("statusmeldingen")
+        if not isinstance(statusmeldingen, list):
+            raise PortalChangedError(
+                f"Portal returned an unknown response for {action_description}: "
+                "missing statusmeldingen."
+            )
+
+        messages: list[_PortalStatusMessage] = []
+        for index, item in enumerate(statusmeldingen):
+            message = self._parse_status_message(item)
+            if message is None:
+                raise PortalChangedError(
+                    f"Portal returned malformed statusmeldingen for {action_description}: "
+                    f"entry {index + 1} did not contain a recognizable message."
+                )
+            messages.append(message)
+
+        return messages
+
+    def _parse_status_message(self, item: object) -> _PortalStatusMessage | None:
+        if isinstance(item, str):
+            return _PortalStatusMessage(severity=None, text=item.strip())
+
+        if not isinstance(item, dict):
+            return None
+
+        severity = self._first_string_value(
+            item,
+            ("type", "severity", "niveau", "status", "soort", "categorie"),
+        )
+        text = self._first_string_value(
+            item,
+            ("tekst", "text", "message", "melding", "omschrijving", "description", "titel"),
+        )
+
+        if text is None:
+            string_values = [
+                value.strip() for value in item.values() if isinstance(value, str) and value.strip()
+            ]
+            if severity is not None:
+                string_values = [value for value in string_values if value != severity]
+            text = " ".join(string_values) or None
+
+        if severity is None and text is None:
+            return None
+
+        return _PortalStatusMessage(severity=severity, text=text or severity or "")
+
+    @staticmethod
+    def _first_string_value(item: dict[str, Any], keys: Sequence[str]) -> str | None:
+        for key in keys:
+            value = item.get(key)
+            if isinstance(value, str) and value.strip():
+                return value.strip()
+        return None
+
+    def _is_already_enrolled_message(self, message: _PortalStatusMessage) -> bool:
+        text = message.text.casefold()
+        return any(marker in text for marker in self._ALREADY_ENROLLED_TEXT_MARKERS)
+
+    def _is_failure_message(self, message: _PortalStatusMessage) -> bool:
+        severity = (message.severity or "").strip().upper()
+        if severity in self._FAILURE_STATUS_TYPES:
+            return True
+
+        text = message.text.casefold()
+        return any(marker in text for marker in self._FAILURE_TEXT_MARKERS)
+
+    @staticmethod
+    def _format_status_messages(messages: Sequence[_PortalStatusMessage]) -> str:
+        parts = []
+        for message in messages:
+            if message.severity:
+                parts.append(f"{message.severity}: {message.text}")
+            else:
+                parts.append(message.text)
+        return "; ".join(parts)
 
     def _map_suggested_course(self, item: dict[str, Any]) -> SuggestedCourse:
         return SuggestedCourse(
