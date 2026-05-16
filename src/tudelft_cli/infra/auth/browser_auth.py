@@ -1,6 +1,9 @@
 from __future__ import annotations
 
-from datetime import datetime
+import base64
+import contextlib
+import json
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
@@ -84,7 +87,8 @@ class BrowserAuthProvider(AuthProvider):
                     access_token=token_payload["access_token"],
                     token_type=token_payload.get("token_type"),
                     scope=token_payload.get("scope"),
-                    obtained_at=datetime.now(),
+                    expires_at=_extract_expires_at(token_payload),
+                    obtained_at=datetime.now(timezone.utc),
                 )
                 self.session_store.save(session)
                 return session
@@ -106,3 +110,63 @@ class BrowserAuthProvider(AuthProvider):
 
     def logout(self) -> None:
         self.session_store.clear()
+
+
+def _extract_expires_at(token_payload: dict[str, Any]) -> datetime | None:
+    obtained_at = datetime.now(timezone.utc)
+
+    expires_in = token_payload.get("expires_in")
+    if isinstance(expires_in, str):
+        with contextlib.suppress(ValueError):
+            expires_in = int(expires_in)
+    if isinstance(expires_in, int | float):
+        return obtained_at + timedelta(seconds=expires_in)
+
+    for field in ("expires_at", "expires_on", "expires"):
+        expires_at = _parse_datetime_value(token_payload.get(field))
+        if expires_at is not None:
+            return expires_at
+
+    access_token = token_payload.get("access_token")
+    if isinstance(access_token, str):
+        return _extract_jwt_expires_at(access_token)
+
+    return None
+
+
+def _parse_datetime_value(value: object) -> datetime | None:
+    if isinstance(value, int | float):
+        return datetime.fromtimestamp(value, tz=timezone.utc)
+
+    if not isinstance(value, str) or not value:
+        return None
+
+    with contextlib.suppress(ValueError):
+        return datetime.fromtimestamp(float(value), tz=timezone.utc)
+
+    with contextlib.suppress(ValueError):
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        if parsed.tzinfo is None:
+            return parsed.replace(tzinfo=timezone.utc)
+        return parsed
+
+    return None
+
+
+def _extract_jwt_expires_at(access_token: str) -> datetime | None:
+    parts = access_token.split(".")
+    if len(parts) < 2:
+        return None
+
+    payload = parts[1]
+    padding = "=" * (-len(payload) % 4)
+    try:
+        decoded = base64.urlsafe_b64decode(f"{payload}{padding}")
+        data = json.loads(decoded)
+    except (ValueError, json.JSONDecodeError):
+        return None
+
+    if not isinstance(data, dict):
+        return None
+
+    return _parse_datetime_value(data.get("exp"))
