@@ -1,0 +1,20 @@
+{
+  "items": [
+    {
+      "id_cursus_blok": "1001",
+      "id_cursus": "501",
+      "cursus": "CSE2000",
+      "collegejaar": "2025",
+      "blok": "Q3",
+      "periode_omschrijving": "Semester 2",
+      "periode_start_einddatum": "2026-02-01 - 2026-04-15",
+      "cursus_korte_naam": "Software Project",
+      "punten": "10",
+      "punteneenheid": "EC",
+      "onderdeel_van": "BSc CSE",
+      "mag_uitschrijven": "J",
+      "nieuw": "N",
+      "historie": "?"
+    }
+  ]
+}
