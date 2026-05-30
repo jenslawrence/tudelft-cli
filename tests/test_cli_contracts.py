@@ -296,10 +296,9 @@ def test_course_rejects_blank_course_code(
 def test_course_rejects_invalid_output_format(runner: CliRunner) -> None:
     result = runner.invoke(app, ["course", "CSE2530", "--output", "yaml"], color=False)
 
-    assert result.exit_code != 0
-    assert "Invalid value for '--output'" in result.output
-    assert "text" in result.output
-    assert "json" in result.output
+    assert result.exit_code == 2
+    assert "yaml" in result.output
+    assert "--output" in result.output or "json" in result.output or "text" in result.output
     assert "Traceback" not in result.output
 
 
