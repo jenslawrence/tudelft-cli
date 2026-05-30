@@ -4,7 +4,11 @@ from typing import Any
 
 from tudelft_cli.domain.errors import PortalChangedError
 from tudelft_cli.domain.models import Grade
-from tudelft_cli.infra.portal.parsing import parse_datetime, required_string
+from tudelft_cli.infra.portal.parsing import (
+    parse_datetime,
+    require_dict_item,
+    required_str,
+)
 
 
 def map_grades_page(payload: object, *, final_only: bool) -> tuple[list[Grade], bool]:
@@ -19,10 +23,7 @@ def map_grades_page(payload: object, *, final_only: bool) -> tuple[list[Grade], 
 
     grades: list[Grade] = []
     for item in items:
-        if not isinstance(item, dict):
-            continue
-
-        grade = map_grade(item)
+        grade = map_grade(require_dict_item(item, "grade row"))
 
         if final_only:
             component = grade.component.strip().lower()
@@ -35,10 +36,10 @@ def map_grades_page(payload: object, *, final_only: bool) -> tuple[list[Grade], 
 
 
 def map_grade(item: dict[str, Any]) -> Grade:
-    course_code = required_string(item, "cursus")
-    course_name = required_string(item, "cursus_korte_naam")
-    component = required_string(item, "toets_omschrijving")
-    value = required_string(item, "resultaat")
+    course_code = required_str(item, "cursus", "grade row")
+    course_name = required_str(item, "cursus_korte_naam", "grade row")
+    component = required_str(item, "toets_omschrijving", "grade row")
+    value = required_str(item, "resultaat", "grade row")
 
     voldoende = item.get("voldoende")
     passed: bool | None
