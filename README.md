@@ -72,7 +72,9 @@ After successful login, your session is stored locally.
 Authentication and profile:
 
     tudelft login
+    tudelft status
     tudelft whoami
+    tudelft whoami --output json
     tudelft whoami --output pretty
     tudelft logout
 
@@ -89,8 +91,11 @@ Grades and progress:
 Enrollments and suggestions:
 
     tudelft enrollments
+    tudelft enrollments --output json
     tudelft enrollments --courses
+    tudelft enrollments --courses --output json
     tudelft enrollments --exams
+    tudelft enrollments --exams --output json
 
     tudelft suggest-courses
     tudelft suggest-courses --output json
@@ -123,6 +128,7 @@ Implemented commands:
 
 - `tudelft login`
 - `tudelft logout`
+- `tudelft status`
 - `tudelft whoami`
 - `tudelft grades`
 - `tudelft ec`

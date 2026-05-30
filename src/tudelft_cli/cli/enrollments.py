@@ -1,3 +1,5 @@
+from enum import Enum
+
 import typer
 
 from tudelft_cli.app.services.enrollments import GetEnrollmentsService
@@ -8,10 +10,16 @@ from tudelft_cli.formatting.enrollments import render_enrollments
 app = typer.Typer(help="Enrollment overview commands")
 
 
+class OutputFormat(str, Enum):
+    table = "table"
+    json = "json"
+
+
 @app.command("enrollments", help="Show current course and exam enrollments.")
 def enrollments(
     courses: bool = typer.Option(False, "--courses"),
     exams: bool = typer.Option(False, "--exams"),
+    output: OutputFormat = typer.Option(OutputFormat.table, "--output", "-o"),
 ) -> None:
     try:
         ctx = create_context()
@@ -24,6 +32,7 @@ def enrollments(
             result,
             show_courses=show_courses,
             show_exams=show_exams,
+            as_json=(output == OutputFormat.json),
         )
 
     except TUDelftCliError as exc:

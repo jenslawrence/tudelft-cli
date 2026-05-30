@@ -1,3 +1,6 @@
+import json
+from typing import Any
+
 from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
@@ -9,11 +12,31 @@ from tudelft_cli.domain.models import StudentProfile
 console = Console()
 
 
-def render_profile(profile: StudentProfile, pretty: bool = False) -> None:
-    if pretty:
+def render_profile(
+    profile: StudentProfile,
+    pretty: bool = False,
+    as_json: bool = False,
+) -> None:
+    if as_json:
+        render_profile_json(profile)
+    elif pretty:
         _render_profile_pretty(profile)
     else:
         _render_profile_plain(profile)
+
+
+def render_profile_json(profile: StudentProfile) -> None:
+    print(json.dumps(_profile_to_dict(profile), indent=2, ensure_ascii=False))
+
+
+def _profile_to_dict(profile: StudentProfile) -> dict[str, Any]:
+    return {
+        "profile": {
+            "name": profile.name,
+            "student_number": profile.student_number,
+            "email": profile.email,
+        }
+    }
 
 
 def _render_profile_plain(profile: StudentProfile) -> None:

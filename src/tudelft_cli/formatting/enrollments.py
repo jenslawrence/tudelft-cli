@@ -1,7 +1,10 @@
+import json
+from typing import Any
+
 from rich.console import Console
 from rich.table import Table
 
-from tudelft_cli.domain.models import CourseEnrollment
+from tudelft_cli.domain.models import CourseEnrollment, ExamEnrollment
 
 console = Console()
 
@@ -74,7 +77,16 @@ def render_enrollments(
     data: dict,
     show_courses: bool = True,
     show_exams: bool = True,
+    as_json: bool = False,
 ) -> None:
+    if as_json:
+        render_enrollments_json(
+            data,
+            show_courses=show_courses,
+            show_exams=show_exams,
+        )
+        return
+
     if show_courses:
         courses = data.get("courses", [])
         console.print()
@@ -92,3 +104,74 @@ def render_enrollments(
         else:
             console.print("[bold]Exams[/bold]")
             console.print("No enrolled exams.")
+
+
+def render_enrollments_json(
+    data: dict,
+    show_courses: bool = True,
+    show_exams: bool = True,
+) -> None:
+    print(
+        json.dumps(
+            _enrollments_to_dict(data, show_courses=show_courses, show_exams=show_exams),
+            indent=2,
+            ensure_ascii=False,
+        )
+    )
+
+
+def _enrollments_to_dict(
+    data: dict,
+    show_courses: bool = True,
+    show_exams: bool = True,
+) -> dict[str, Any]:
+    courses = data.get("courses", []) if show_courses else []
+    exams = data.get("exams", []) if show_exams else []
+
+    return {
+        "course_enrollments": [_course_to_dict(course) for course in courses],
+        "exam_enrollments": [_exam_to_dict(exam) for exam in exams],
+    }
+
+
+def _course_to_dict(course: CourseEnrollment) -> dict[str, Any]:
+    return {
+        "course_offering_id": course.course_offering_id,
+        "course_id": course.course_id,
+        "course_code": course.course_code,
+        "academic_year": course.academic_year,
+        "block": course.block,
+        "period_description": course.period_description,
+        "period_date_range": course.period_date_range,
+        "course_name": course.course_name,
+        "ec": course.ec,
+        "ec_unit": course.ec_unit,
+        "programme_part": course.programme_part,
+        "can_unenroll": course.can_unenroll,
+        "is_new": course.is_new,
+        "is_historical": course.is_historical,
+    }
+
+
+def _exam_to_dict(exam: ExamEnrollment) -> dict[str, Any]:
+    return {
+        "exam_offering_id": exam.exam_offering_id,
+        "course_id": exam.course_id,
+        "course_code": exam.course_code,
+        "academic_year": exam.academic_year,
+        "course_name": exam.course_name,
+        "programme_part": exam.programme_part,
+        "test_code": exam.test_code,
+        "test_description": exam.test_description,
+        "block": exam.block,
+        "period_description": exam.period_description,
+        "opportunity": exam.opportunity,
+        "exam_datetime": exam.exam_datetime.isoformat() if exam.exam_datetime else None,
+        "day": exam.day,
+        "start_time": exam.start_time,
+        "end_time": exam.end_time,
+        "can_unenroll": exam.can_unenroll,
+        "is_new": exam.is_new,
+        "result": exam.result,
+        "is_historical": exam.is_historical,
+    }
