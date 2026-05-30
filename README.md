@@ -66,18 +66,18 @@ After successful login, your session is stored locally.
 ## Example Commands
 
     tudelft grades
-    tudelft grades --json
+    tudelft grades --output json
     tudelft grades --final-only
 
     tudelft ec
-    tudelft curriculum
+    tudelft course CSE2530
 
     tudelft enrollments
     tudelft enrollments --courses
     tudelft enrollments --exams
 
     tudelft suggest-courses
-    tudelft enroll-course
+    tudelft enroll-course CSE2000
 
 ---
 
