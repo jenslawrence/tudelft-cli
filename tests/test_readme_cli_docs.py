@@ -5,6 +5,7 @@ import shlex
 from pathlib import Path
 
 from typer.testing import CliRunner
+from typer.main import get_command
 
 from tudelft_cli.main import app
 
@@ -32,6 +33,16 @@ def _actual_typer_commands() -> set[str]:
         typer_instance = group.typer_instance
         commands.update(command.name for command in typer_instance.registered_commands)
     return commands
+
+
+def _command_options(command: str) -> set[str]:
+    click_command = get_command(app).commands[command]
+    return {
+        option
+        for parameter in click_command.params
+        for option in getattr(parameter, "opts", [])
+        if option.startswith("--")
+    }
 
 
 def _readme_text() -> str:
@@ -72,7 +83,6 @@ def test_readme_command_surface_matches_typer_commands() -> None:
 
 
 def test_readme_tudelft_examples_use_implemented_commands_and_flags() -> None:
-    runner = CliRunner()
     actual_commands = _actual_typer_commands()
 
     for match in re.finditer(r"\btudelft[ \t]+([a-z][a-z-]*)", _readme_text()):
@@ -85,9 +95,6 @@ def test_readme_tudelft_examples_use_implemented_commands_and_flags() -> None:
         command = tokens[1]
         assert command in actual_commands
 
-        help_result = runner.invoke(app, [command, "--help"])
-        assert help_result.exit_code == 0
-
         documented_flags = [token for token in tokens[2:] if token.startswith("--")]
         for flag in documented_flags:
-            assert flag in help_result.output
+            assert flag in _command_options(command)
