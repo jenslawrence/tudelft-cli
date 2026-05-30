@@ -27,12 +27,14 @@ exposed by the Python CLI.
 ## Subprocess communication
 
 `frontend/src/client/pythonCli.ts` is the only module that spawns the Python
-CLI. It resolves the binary from `TUDELFT_CLI_BIN` and falls back to `tudelft`.
+CLI. It resolves the command from `TUDELFT_CLI` and falls back to `tudelft`.
 
 Each dashboard command is executed with `child_process.execFile`, explicit
-argument arrays, and `--output json`. The client owns timeout handling, non-zero
-exit handling, and JSON parse errors. UI components receive normalized error
-messages and render them next to the affected panel.
+argument arrays, and `--output json`. `TUDELFT_CLI` may contain a simple
+executable or a quoted multi-token command; the frontend parses it into an
+executable plus arguments and does not run it through a shell. The client owns
+timeout handling, non-zero exit handling, and JSON parse errors. UI components
+receive normalized error messages and render them next to the affected panel.
 
 Commands used by the first dashboard:
 
@@ -58,6 +60,32 @@ npm run dev
 
 `npm run start` runs the compiled `dist/index.js`, so run `npm run build` first
 after TypeScript changes.
+
+By default, the dashboard expects `tudelft` to be available on `PATH`:
+
+```bash
+npm run dev
+```
+
+If the Python CLI is available through `uv`, point the dashboard at that command:
+
+```bash
+TUDELFT_CLI="uv run tudelft" npm run dev
+```
+
+For direct module execution, run from `frontend/` and expose the Python source
+tree if the package is not installed in the active environment:
+
+```bash
+PYTHONPATH=../src TUDELFT_CLI="python -m tudelft_cli.main" npm run dev
+```
+
+If the package is installed editable or otherwise importable, `PYTHONPATH` is
+not required:
+
+```bash
+TUDELFT_CLI="python -m tudelft_cli.main" npm run dev
+```
 
 ## Future roadmap
 

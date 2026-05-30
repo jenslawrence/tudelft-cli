@@ -8,7 +8,7 @@ import type {
 } from '../types/contracts.js';
 
 const DEFAULT_TIMEOUT_MS = 30_000;
-const TUDELFT_BIN = process.env.TUDELFT_CLI_BIN ?? 'tudelft';
+const DEFAULT_TUDELFT_CLI = 'tudelft';
 
 export class PythonCliError extends Error {
   readonly command: string;
@@ -43,11 +43,12 @@ export async function runCommand<T>(
   command: CommandName,
   options: {timeoutMs?: number} = {}
 ): Promise<T> {
-  const args = [command, '--output', 'json'];
-  const displayCommand = `${TUDELFT_BIN} ${args.join(' ')}`;
+  const cli = resolveCliCommand();
+  const args = [...cli.args, command, '--output', 'json'];
+  const displayCommand = [...cli.displayTokens, command, '--output', 'json'].join(' ');
   const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
 
-  const {stdout} = await execTudelft(args, displayCommand, timeoutMs);
+  const {stdout} = await execTudelft(cli.executable, args, displayCommand, timeoutMs);
 
   try {
     return JSON.parse(stdout) as T;
@@ -80,13 +81,14 @@ export function getGrades(): Promise<GradesResponse> {
 }
 
 function execTudelft(
+  executable: string,
   args: string[],
   displayCommand: string,
   timeoutMs: number
 ): Promise<{stdout: string; stderr: string}> {
   return new Promise((resolve, reject) => {
     execFile(
-      TUDELFT_BIN,
+      executable,
       args,
       {
         encoding: 'utf8',
@@ -131,6 +133,84 @@ function execTudelft(
       }
     );
   });
+}
+
+function resolveCliCommand(): {
+  executable: string;
+  args: string[];
+  displayTokens: string[];
+} {
+  const configuredCommand = process.env.TUDELFT_CLI?.trim() || DEFAULT_TUDELFT_CLI;
+  const tokens = parseCommand(configuredCommand);
+
+  if (tokens.length === 0) {
+    return {
+      executable: DEFAULT_TUDELFT_CLI,
+      args: [],
+      displayTokens: [DEFAULT_TUDELFT_CLI]
+    };
+  }
+
+  const [executable, ...args] = tokens;
+  return {
+    executable,
+    args,
+    displayTokens: tokens
+  };
+}
+
+function parseCommand(command: string): string[] {
+  const tokens: string[] = [];
+  let token = '';
+  let quote: '"' | "'" | null = null;
+  let escaping = false;
+
+  for (const character of command) {
+    if (escaping) {
+      token += character;
+      escaping = false;
+      continue;
+    }
+
+    if (character === '\\') {
+      escaping = true;
+      continue;
+    }
+
+    if (quote) {
+      if (character === quote) {
+        quote = null;
+      } else {
+        token += character;
+      }
+      continue;
+    }
+
+    if (character === '"' || character === "'") {
+      quote = character;
+      continue;
+    }
+
+    if (/\s/.test(character)) {
+      if (token.length > 0) {
+        tokens.push(token);
+        token = '';
+      }
+      continue;
+    }
+
+    token += character;
+  }
+
+  if (escaping) {
+    token += '\\';
+  }
+
+  if (token.length > 0) {
+    tokens.push(token);
+  }
+
+  return tokens;
 }
 
 function commandFailureMessage(
