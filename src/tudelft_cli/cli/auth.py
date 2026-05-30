@@ -1,9 +1,8 @@
 import typer
 
 from tudelft_cli.app.services.login import LoginService
+from tudelft_cli.cli.context import create_context
 from tudelft_cli.domain.errors import TUDelftCliError
-from tudelft_cli.infra.auth.browser_auth import BrowserAuthProvider
-from tudelft_cli.infra.auth.session_store import SessionStore
 
 app = typer.Typer(help="Authentication commands")
 
@@ -11,8 +10,8 @@ app = typer.Typer(help="Authentication commands")
 @app.command("login", help="Authenticate with TU Delft via browser login.")
 def login() -> None:
     try:
-        auth_provider = BrowserAuthProvider(SessionStore())
-        session = LoginService(auth_provider).execute()
+        ctx = create_context()
+        session = LoginService(ctx.auth).execute()
         token_type = session.token_type or "unknown"
         typer.echo(f"Login successful ({token_type} token captured)")
     except TUDelftCliError as exc:
@@ -22,6 +21,6 @@ def login() -> None:
 
 @app.command("logout", help="Remove the stored TU Delft session.")
 def logout() -> None:
-    auth_provider = BrowserAuthProvider(SessionStore())
-    auth_provider.logout()
+    ctx = create_context()
+    ctx.auth.logout()
     typer.echo("Logged out")

@@ -5,11 +5,9 @@ from enum import Enum
 import typer
 
 from tudelft_cli.app.services.grades import GetGradesService
+from tudelft_cli.cli.context import create_context
 from tudelft_cli.domain.errors import TUDelftCliError
 from tudelft_cli.formatting.grades import render_grades
-from tudelft_cli.infra.auth.browser_auth import BrowserAuthProvider
-from tudelft_cli.infra.auth.session_store import SessionStore
-from tudelft_cli.infra.portal.mytudelft_portal import MyTUDelftPortal
 
 app = typer.Typer(help="Grade commands.")
 
@@ -26,9 +24,8 @@ def grades(
     output: OutputFormat = typer.Option(OutputFormat.table, "--output", "-o"),
 ) -> None:
     try:
-        auth_provider = BrowserAuthProvider(SessionStore())
-        portal = MyTUDelftPortal()
-        result = GetGradesService(auth_provider, portal).execute(final_only=final_only)
+        ctx = create_context()
+        result = GetGradesService(ctx.auth, ctx.portal).execute(final_only=final_only)
 
         render_grades(
             result,
