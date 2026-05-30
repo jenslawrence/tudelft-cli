@@ -113,6 +113,22 @@ def test_grades_final_only_keeps_current_component_filter(
     assert [grade.component for grade in grades] == ["Final", "Final grade"]
 
 
+def test_grades_missing_required_field_raises_portal_changed_error(
+    fake_http: FakeHttp,
+    session: AuthSession,
+) -> None:
+    payload = load_fixture("grades_payload.json")
+    del payload["items"][0]["resultaat"]
+    fake_http.add(
+        "GET",
+        f"{MyTUDelftPortal.BASE_URL}/student/resultaten",
+        FakeResponse(200, payload),
+    )
+
+    with pytest.raises(PortalChangedError, match="grade row.*resultaat.*str"):
+        MyTUDelftPortal().get_grades(session)
+
+
 def test_ec_progress_payload_mapping(fake_http: FakeHttp, session: AuthSession) -> None:
     fake_http.add(
         "GET",
@@ -134,6 +150,36 @@ def test_ec_progress_payload_mapping(fake_http: FakeHttp, session: AuthSession) 
     assert first.completed is False
     assert first.other_earned_ec == 3
     assert progress.items[1].completed is True
+
+
+def test_ec_progress_malformed_integer_raises_portal_changed_error(
+    fake_http: FakeHttp,
+    session: AuthSession,
+) -> None:
+    payload = load_fixture("ec_progress_payload.json")
+    payload["items"][0]["examenfases"][0]["punten_behaald"] = "forty-two"
+    fake_http.add(
+        "GET",
+        f"{MyTUDelftPortal.BASE_URL}/student/voortgang/per_opleiding/",
+        FakeResponse(200, payload),
+    )
+
+    with pytest.raises(PortalChangedError, match="EC progress phase.*punten_behaald.*int"):
+        MyTUDelftPortal().get_ec_progress(session)
+
+
+def test_profile_missing_required_field_raises_portal_changed_error(
+    fake_http: FakeHttp,
+    session: AuthSession,
+) -> None:
+    fake_http.add(
+        "GET",
+        f"{MyTUDelftPortal.BASE_URL}/gebruiker",
+        FakeResponse(200, {"roepnaam": "Ada", "studentnummer": "1234567"}),
+    )
+
+    with pytest.raises(PortalChangedError, match="profile.*achternaam.*str"):
+        MyTUDelftPortal().get_profile(session)
 
 
 def test_suggested_courses_payload_mapping(fake_http: FakeHttp, session: AuthSession) -> None:
@@ -159,6 +205,25 @@ def test_suggested_courses_payload_mapping(fake_http: FakeHttp, session: AuthSes
     assert course.waiting_list is None
     assert course.teaching_form_description == "Project"
     assert course.period_date_range is None
+
+
+def test_course_suggestion_missing_required_field_raises_portal_changed_error(
+    fake_http: FakeHttp,
+    session: AuthSession,
+) -> None:
+    payload = load_fixture("suggested_courses_payload.json")
+    del payload["items"][0]["id_cursus_blok"]
+    fake_http.add(
+        "GET",
+        MyTUDelftPortal.COURSE_SUGGESTIONS_URL,
+        FakeResponse(200, payload),
+    )
+
+    with pytest.raises(
+        PortalChangedError,
+        match="course enrollment suggestion.*id_cursus_blok.*int",
+    ):
+        MyTUDelftPortal().get_suggested_courses(session)
 
 
 def test_course_enrollments_payload_mapping(fake_http: FakeHttp, session: AuthSession) -> None:
@@ -212,6 +277,27 @@ def test_exam_opportunities_payload_mapping(fake_http: FakeHttp, session: AuthSe
     assert first.start_time == "09:30"
     assert first.end_time == "12:45"
     assert opportunities[1].start_time == "morning"
+
+
+def test_exam_opportunity_malformed_integer_raises_portal_changed_error(
+    fake_http: FakeHttp,
+    session: AuthSession,
+) -> None:
+    opportunities_payload = load_fixture("exam_opportunities_payload.json")
+    opportunities_payload["toetsen"][0]["id_toets_gelegenheid"] = "nine-thousand-one"
+    fake_http.add(
+        "GET",
+        MyTUDelftPortal.EXAM_SUGGESTIONS_URL,
+        FakeResponse(200, load_fixture("suggested_exam_courses_payload.json")),
+    )
+    fake_http.add(
+        "GET",
+        f"{MyTUDelftPortal.EXAM_OPPORTUNITIES_URL}/501",
+        FakeResponse(200, opportunities_payload),
+    )
+
+    with pytest.raises(PortalChangedError, match="exam opportunity.*id_toets_gelegenheid.*int"):
+        MyTUDelftPortal().get_exam_opportunities(session, "cse2000")
 
 
 def test_exam_enrollments_payload_mapping(fake_http: FakeHttp, session: AuthSession) -> None:

@@ -2,37 +2,42 @@ from __future__ import annotations
 
 from tudelft_cli.domain.errors import PortalChangedError
 from tudelft_cli.domain.models import EcPhaseProgress, EcProgress
-from tudelft_cli.infra.portal.parsing import as_optional_string, parse_int, required_string
+from tudelft_cli.infra.portal.parsing import (
+    as_optional_string,
+    optional_int,
+    require_dict_item,
+    required_list,
+    required_str,
+)
 
 
 def map_ec_progress_payload(payload: object) -> EcProgress:
     if not isinstance(payload, dict):
         raise PortalChangedError("Voortgang endpoint returned an unexpected payload shape.")
 
-    items = payload.get("items")
-    if not isinstance(items, list):
-        raise PortalChangedError("Voortgang payload is missing expected items field.")
+    items = required_list(payload, "items", "EC progress payload")
 
     progress_items: list[EcPhaseProgress] = []
 
-    for programme in items:
-        if not isinstance(programme, dict):
-            continue
-
-        programme_name = required_string(programme, "opleiding_naam")
+    for programme_item in items:
+        programme = require_dict_item(programme_item, "EC progress programme")
+        programme_name = required_str(programme, "opleiding_naam", "EC progress programme")
         exam_phases = programme.get("examenfases")
 
         if not isinstance(exam_phases, list):
             continue
 
-        for phase in exam_phases:
-            if not isinstance(phase, dict):
-                continue
+        for phase_item in exam_phases:
+            phase = require_dict_item(phase_item, "EC progress phase")
 
-            minimum_punten = parse_int(phase.get("minimum_punten"))
-            punten_behaald = parse_int(phase.get("punten_behaald"))
-            percentage_behaald = parse_int(phase.get("percentage_behaald"))
-            overige_behaalde_punten = parse_int(phase.get("overige_behaalde_punten"))
+            minimum_punten = optional_int(phase, "minimum_punten", "EC progress phase")
+            punten_behaald = optional_int(phase, "punten_behaald", "EC progress phase")
+            percentage_behaald = optional_int(phase, "percentage_behaald", "EC progress phase")
+            overige_behaalde_punten = optional_int(
+                phase,
+                "overige_behaalde_punten",
+                "EC progress phase",
+            )
 
             voldaan = phase.get("voldaan")
             completed: bool | None
@@ -48,7 +53,11 @@ def map_ec_progress_payload(payload: object) -> EcProgress:
                     programme_name=programme_name,
                     faculty=as_optional_string(phase.get("faculteit")),
                     exam_programme_name=as_optional_string(phase.get("examenprogramma_naam")),
-                    phase_description=required_string(phase, "examenfase_omschrijving"),
+                    phase_description=required_str(
+                        phase,
+                        "examenfase_omschrijving",
+                        "EC progress phase",
+                    ),
                     earned_ec=punten_behaald,
                     required_ec=minimum_punten,
                     percentage=percentage_behaald,
