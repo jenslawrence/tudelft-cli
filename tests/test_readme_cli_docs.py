@@ -73,13 +73,17 @@ def test_readme_command_surface_matches_typer_commands() -> None:
 
 def test_readme_tudelft_examples_use_implemented_commands_and_flags() -> None:
     runner = CliRunner()
+    actual_commands = _actual_typer_commands()
+
+    for match in re.finditer(r"\btudelft[ \t]+([a-z][a-z-]*)", _readme_text()):
+        assert match.group(1) in actual_commands
 
     for tokens in _documented_tudelft_commands():
         if len(tokens) == 1:
             continue
 
         command = tokens[1]
-        assert command in _actual_typer_commands()
+        assert command in actual_commands
 
         help_result = runner.invoke(app, [command, "--help"])
         assert help_result.exit_code == 0
