@@ -12,6 +12,7 @@ app = typer.Typer(help="Student profile commands.")
 class OutputFormat(str, Enum):
     table = "table"
     pretty = "pretty"
+    json = "json"
 
 
 @app.command("whoami", help="Show the currently logged-in student profile.")
@@ -21,7 +22,11 @@ def whoami(
     try:
         ctx = create_context()
         result = GetProfileService(ctx.auth, ctx.portal).execute()
-        render_profile(result, pretty=(output == OutputFormat.pretty))
+        render_profile(
+            result,
+            pretty=(output == OutputFormat.pretty),
+            as_json=(output == OutputFormat.json),
+        )
 
     except TUDelftCliError as exc:
         typer.echo(f"Error: {exc}")

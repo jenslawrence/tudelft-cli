@@ -15,6 +15,7 @@ README = Path(__file__).resolve().parents[1] / "README.md"
 IMPLEMENTED_COMMANDS = {
     "login",
     "logout",
+    "status",
     "whoami",
     "grades",
     "ec",

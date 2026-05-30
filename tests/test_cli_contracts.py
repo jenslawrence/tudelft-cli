@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import importlib
 import json
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import pytest
 from typer.testing import CliRunner
@@ -27,6 +27,7 @@ from tudelft_cli.main import app
 PUBLIC_COMMANDS = [
     "login",
     "logout",
+    "status",
     "whoami",
     "grades",
     "ec",
@@ -344,6 +345,187 @@ def test_grades_json_output_contract(
     assert payload["items"][0]["course_name"] == "Software Engineering Methods"
     assert payload["items"][0]["value"] == "8.5"
     assert payload["items"][0]["passed"] is True
+
+
+def test_ec_json_output_contract(
+    runner: CliRunner,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    install_fake_context(monkeypatch)
+
+    result = runner.invoke(app, ["ec", "--output", "json"], color=False)
+
+    assert result.exit_code == 0
+    payload = json.loads(result.output)
+    assert set(payload) == {"items"}
+    assert len(payload["items"]) == 1
+    assert payload["items"][0]["programme_name"] == "CSE"
+    assert payload["items"][0]["phase_description"] == "Year 1"
+    assert payload["items"][0]["earned_ec"] == 42
+    assert payload["items"][0]["required_ec"] == 60
+
+
+def test_whoami_json_output_contract(
+    runner: CliRunner,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    install_fake_context(monkeypatch)
+
+    result = runner.invoke(app, ["whoami", "--output", "json"], color=False)
+
+    assert result.exit_code == 0
+    payload = json.loads(result.output)
+    assert set(payload) == {"profile"}
+    assert payload["profile"] == {
+        "name": "Ada Lovelace",
+        "student_number": "1234567",
+        "email": "ada.lovelace@example.test",
+    }
+
+
+def test_enrollments_json_output_contract(
+    runner: CliRunner,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    install_fake_context(monkeypatch)
+
+    result = runner.invoke(app, ["enrollments", "--output", "json"], color=False)
+
+    assert result.exit_code == 0
+    payload = json.loads(result.output)
+    assert set(payload) == {"course_enrollments", "exam_enrollments"}
+    assert len(payload["course_enrollments"]) == 1
+    assert len(payload["exam_enrollments"]) == 1
+    assert payload["course_enrollments"][0]["course_code"] == "CSE2000"
+    assert payload["course_enrollments"][0]["course_name"] == "Software Project"
+    assert payload["course_enrollments"][0]["can_unenroll"] is True
+    assert payload["exam_enrollments"][0]["course_code"] == "CSE2000"
+    assert payload["exam_enrollments"][0]["test_description"] == "Written exam"
+    assert payload["exam_enrollments"][0]["exam_datetime"] == "2026-04-20T09:00:00+00:00"
+
+
+def test_enrollments_json_respects_course_and_exam_filters(
+    runner: CliRunner,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    install_fake_context(monkeypatch)
+
+    courses_result = runner.invoke(
+        app,
+        ["enrollments", "--courses", "--output", "json"],
+        color=False,
+    )
+    exams_result = runner.invoke(
+        app,
+        ["enrollments", "--exams", "--output", "json"],
+        color=False,
+    )
+
+    assert courses_result.exit_code == 0
+    courses_payload = json.loads(courses_result.output)
+    assert len(courses_payload["course_enrollments"]) == 1
+    assert courses_payload["exam_enrollments"] == []
+
+    assert exams_result.exit_code == 0
+    exams_payload = json.loads(exams_result.output)
+    assert exams_payload["course_enrollments"] == []
+    assert len(exams_payload["exam_enrollments"]) == 1
+
+
+def test_status_default_output_uses_local_session_without_secret(
+    runner: CliRunner,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    expires_at = datetime.now(timezone.utc) + timedelta(hours=1)
+    install_fake_context(
+        monkeypatch,
+        auth=FakeAuth(AuthSession(access_token="secret-token", expires_at=expires_at)),
+    )
+
+    result = runner.invoke(app, ["status"], color=False)
+
+    assert result.exit_code == 0
+    assert "Auth Status" in result.output
+    assert "Authenticated" in result.output
+    assert expires_at.isoformat() in result.output
+    assert "secret-token" not in result.output
+    assert "Traceback" not in result.output
+
+
+def test_status_json_output_contract(
+    runner: CliRunner,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    expires_at = datetime.now(timezone.utc) + timedelta(hours=1)
+    install_fake_context(
+        monkeypatch,
+        auth=FakeAuth(AuthSession(access_token="secret-token", expires_at=expires_at)),
+    )
+
+    result = runner.invoke(app, ["status", "--output", "json"], color=False)
+
+    assert result.exit_code == 0
+    payload = json.loads(result.output)
+    assert payload == {
+        "authenticated": True,
+        "expires_at": expires_at.isoformat(),
+        "expired": False,
+    }
+    assert "secret-token" not in result.output
+
+
+def test_status_json_expired_session_contract(
+    runner: CliRunner,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    expires_at = datetime.now(timezone.utc) - timedelta(hours=1)
+    install_fake_context(
+        monkeypatch,
+        auth=FakeAuth(AuthSession(access_token="secret-token", expires_at=expires_at)),
+    )
+
+    result = runner.invoke(app, ["status", "--output", "json"], color=False)
+
+    assert result.exit_code == 0
+    payload = json.loads(result.output)
+    assert payload == {
+        "authenticated": False,
+        "expires_at": expires_at.isoformat(),
+        "expired": True,
+    }
+    assert "secret-token" not in result.output
+
+
+def test_status_default_output_handles_missing_session(
+    runner: CliRunner,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    install_fake_context(monkeypatch, auth=FakeAuth(session=None))
+
+    result = runner.invoke(app, ["status"], color=False)
+
+    assert result.exit_code == 0
+    assert "Auth Status" in result.output
+    assert "Authenticated" in result.output
+    assert "no" in result.output
+    assert "Traceback" not in result.output
+
+
+def test_status_json_missing_session_contract(
+    runner: CliRunner,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    install_fake_context(monkeypatch, auth=FakeAuth(session=None))
+
+    result = runner.invoke(app, ["status", "--output", "json"], color=False)
+
+    assert result.exit_code == 0
+    payload = json.loads(result.output)
+    assert payload == {
+        "authenticated": False,
+        "expires_at": None,
+        "expired": None,
+    }
 
 
 def test_grades_final_only_option_reaches_portal(
