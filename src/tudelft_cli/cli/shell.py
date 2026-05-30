@@ -5,9 +5,7 @@ from pathlib import Path
 from prompt_toolkit.history import FileHistory
 from prompt_toolkit import PromptSession
 
-from tudelft_cli.infra.auth.browser_auth import BrowserAuthProvider
-from tudelft_cli.infra.auth.session_store import SessionStore
-from tudelft_cli.infra.portal.mytudelft_portal import MyTUDelftPortal
+from tudelft_cli.cli.context import create_context
 
 console = Console()
 
@@ -83,8 +81,8 @@ def run_shell() -> None:
             console.print(f"[red]Error:[/red] {exc}")
 
 def _build_shell_header() -> list[str]:
-    auth_provider = BrowserAuthProvider(SessionStore())
-    session = auth_provider.load_session()
+    ctx = create_context()
+    session = ctx.auth.load_session()
 
     if session is None:
         return [
@@ -93,10 +91,8 @@ def _build_shell_header() -> list[str]:
             "Type 'login' to authenticate, 'help' for commands, 'exit' to quit.",
         ]
 
-    portal = MyTUDelftPortal()
-
     try:
-        profile = portal.get_profile(session)
+        profile = ctx.portal.get_profile(session)
         identity = profile.name
         if profile.student_number:
             identity = f"{identity} ({profile.student_number})"

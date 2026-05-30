@@ -2,7 +2,7 @@
 
 An unofficial command-line interface for TU Delft student portal workflows.
 
-TU Delft CLI connects to `my.tudelft.nl` and allows students to access common academic information directly from the terminal, including grades, EC progress, enrollments, curriculum data, and course enrollment workflows.
+TU Delft CLI connects to `my.tudelft.nl` and allows students to access common academic information directly from the terminal, including grades, EC progress, enrollments, course suggestions, exam suggestions, Study Guide links, and enrollment workflows.
 
 ![Shell Preview](docs/shell-preview2.png)
 
@@ -18,7 +18,10 @@ Current functionality includes:
 - View current course enrollments
 - View current exam enrollments
 - Suggest currently available courses from your fixed programme
+- Suggest courses with open exam opportunities
 - Enroll in courses directly from the terminal
+- Enroll in exam opportunities directly from the terminal
+- Open TU Delft Study Guide course links
 - Interactive shell mode
 
 ---
@@ -50,6 +53,7 @@ Start the shell:
 Or use one-shot commands:
 
     tudelft grades
+    tudelft grades --output json
     tudelft ec
     tudelft whoami
 
@@ -65,19 +69,69 @@ After successful login, your session is stored locally.
 
 ## Example Commands
 
+Authentication and profile:
+
+    tudelft login
+    tudelft whoami
+    tudelft whoami --output pretty
+    tudelft logout
+
+Grades and progress:
+
     tudelft grades
-    tudelft grades --json
+    tudelft grades --output json
     tudelft grades --final-only
+    tudelft grades --final-only --output json
 
     tudelft ec
-    tudelft curriculum
+    tudelft ec --output json
+
+Enrollments and suggestions:
 
     tudelft enrollments
     tudelft enrollments --courses
     tudelft enrollments --exams
 
     tudelft suggest-courses
-    tudelft enroll-course
+    tudelft suggest-courses --output json
+    tudelft suggest-exams
+    tudelft suggest-exams --output json
+
+Course and exam enrollment:
+
+    tudelft enroll-course CSE2530
+    tudelft enroll-course CSE2530 CSE1500 --yes
+    tudelft enroll-exam CSE2530
+    tudelft enroll-exam CSE2530 --select 1
+    tudelft enroll-exam CSE2530 --select 1 --yes
+
+Course information:
+
+    tudelft course CSE2530
+    tudelft course CSE2530 --output json
+    tudelft course CSE2530 --open
+
+Enrollment commands show a confirmation prompt before making changes. Pass `--yes` to skip that prompt. `enroll-exam` opens an interactive selector when multiple exam opportunities are available unless `--select` is provided.
+
+JSON output is selected with `--output json` or `-o json`.
+
+---
+
+## Current Command Surface
+
+Implemented commands:
+
+- `tudelft login`
+- `tudelft logout`
+- `tudelft whoami`
+- `tudelft grades`
+- `tudelft ec`
+- `tudelft enrollments`
+- `tudelft suggest-courses`
+- `tudelft suggest-exams`
+- `tudelft enroll-course COURSE_CODES...`
+- `tudelft enroll-exam COURSE_CODE`
+- `tudelft course COURSE_CODE`
 
 ---
 
@@ -89,11 +143,22 @@ Running:
 
 opens the interactive shell.
 
+Inside the shell, run commands without the `tudelft` prefix:
+
+    grades
+    grades --output json
+    ec
+    enrollments --courses
+    suggest-courses
+    enroll-course CSE2530
+
 Shell shortcuts:
 
     help / h / ?
-    reset
+    reset / clear / cls
     exit / quit / q
+
+The shell uses pretty output for `whoami`, `ec`, and `grades` by default unless you pass `--output` or `-o`.
 
 ---
 

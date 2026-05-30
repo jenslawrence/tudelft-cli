@@ -7,11 +7,9 @@ from questionary import Style
 
 from tudelft_cli.app.services.enroll_exam import EnrollExamService
 from tudelft_cli.app.services.exam_opportunities import GetExamOpportunitiesService
+from tudelft_cli.cli.context import create_context
 from tudelft_cli.domain.errors import TUDelftCliError, ValidationError
 from tudelft_cli.formatting.enrollments import render_exam_enrollments_table
-from tudelft_cli.infra.auth.browser_auth import BrowserAuthProvider
-from tudelft_cli.infra.auth.session_store import SessionStore
-from tudelft_cli.infra.portal.mytudelft_portal import MyTUDelftPortal
 
 app = typer.Typer(help="Exam enrollment commands")
 
@@ -98,10 +96,9 @@ def enroll_exam(
     try:
         normalized = course_code.strip().upper()
 
-        auth_provider = BrowserAuthProvider(SessionStore())
-        portal = MyTUDelftPortal()
+        ctx = create_context()
 
-        course, opportunities = GetExamOpportunitiesService(auth_provider, portal).execute(normalized)
+        course, opportunities = GetExamOpportunitiesService(ctx.auth, ctx.portal).execute(normalized)
 
         chosen = select
         if chosen is None:
@@ -117,7 +114,7 @@ def enroll_exam(
             if not confirmed:
                 raise typer.Exit(code=0)
 
-        result = EnrollExamService(auth_provider, portal).execute(normalized, selection=chosen)
+        result = EnrollExamService(ctx.auth, ctx.portal).execute(normalized, selection=chosen)
         render_exam_enrollments_table(result, title="Enrolled exam")
 
     except IndexError:

@@ -5,11 +5,9 @@ from enum import Enum
 import typer
 
 from tudelft_cli.app.services.ec import GetEcProgressService
+from tudelft_cli.cli.context import create_context
 from tudelft_cli.domain.errors import TUDelftCliError
 from tudelft_cli.formatting.ec import render_ec
-from tudelft_cli.infra.auth.browser_auth import BrowserAuthProvider
-from tudelft_cli.infra.auth.session_store import SessionStore
-from tudelft_cli.infra.portal.mytudelft_portal import MyTUDelftPortal
 
 app = typer.Typer(help="EC progress commands.")
 
@@ -25,9 +23,8 @@ def ec(
     output: OutputFormat = typer.Option(OutputFormat.table, "--output", "-o"),
 ) -> None:
     try:
-        auth_provider = BrowserAuthProvider(SessionStore())
-        portal = MyTUDelftPortal()
-        result = GetEcProgressService(auth_provider, portal).execute()
+        ctx = create_context()
+        result = GetEcProgressService(ctx.auth, ctx.portal).execute()
 
         render_ec(
             result,
