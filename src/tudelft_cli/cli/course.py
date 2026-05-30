@@ -4,9 +4,9 @@ import webbrowser
 import typer
 
 from tudelft_cli.app.services.course_link import GetCourseLinkService
+from tudelft_cli.cli.context import create_context
 from tudelft_cli.domain.errors import TUDelftCliError
 from tudelft_cli.formatting.course_link import render_course_link, render_course_link_json
-from tudelft_cli.infra.portal.mytudelft_portal import MyTUDelftPortal
 
 app = typer.Typer(help="Course information commands")
 
@@ -23,8 +23,8 @@ def course(
     output: OutputFormat = typer.Option(OutputFormat.text, "--output", "-o"),
 ) -> None:
     try:
-        portal = MyTUDelftPortal()
-        link = GetCourseLinkService(portal).execute(course_code)
+        ctx = create_context()
+        link = GetCourseLinkService(ctx.portal).execute(course_code)
 
         if output == OutputFormat.json:
             render_course_link_json(link)

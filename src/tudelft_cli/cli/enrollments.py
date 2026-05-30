@@ -1,11 +1,9 @@
 import typer
 
 from tudelft_cli.app.services.enrollments import GetEnrollmentsService
+from tudelft_cli.cli.context import create_context
 from tudelft_cli.domain.errors import TUDelftCliError
 from tudelft_cli.formatting.enrollments import render_enrollments
-from tudelft_cli.infra.auth.browser_auth import BrowserAuthProvider
-from tudelft_cli.infra.auth.session_store import SessionStore
-from tudelft_cli.infra.portal.mytudelft_portal import MyTUDelftPortal
 
 app = typer.Typer(help="Enrollment overview commands")
 
@@ -16,10 +14,8 @@ def enrollments(
     exams: bool = typer.Option(False, "--exams"),
 ) -> None:
     try:
-        auth_provider = BrowserAuthProvider(SessionStore())
-        portal = MyTUDelftPortal()
-
-        result = GetEnrollmentsService(auth_provider, portal).execute()
+        ctx = create_context()
+        result = GetEnrollmentsService(ctx.auth, ctx.portal).execute()
 
         show_courses = courses or not exams
         show_exams = exams or not courses
